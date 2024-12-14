@@ -16,6 +16,7 @@
 #include "../Manager/Camera.h"
 #include "../Renderer/ModelMaterial.h"
 #include "../Renderer/ModelRenderer.h"
+#include "../Object/Common/AnimationController.h"
 #include "../Application.h"
 #include "Common/Transform.h"
 #include "NormalEnemy.h"
@@ -25,8 +26,12 @@ const char PATH_PIXELSHADER[] = "Data/Shader/PixelShader.pso";
 const char PATH_POSTEFFECT[] = "Data/Shader/PostEffect.pso";
 const char DATA_DISSOLVE[] = "Data/Image/Dissolve.png";
 
+// 座標系
 const VECTOR DEFAULT_POS = { 0.0f, -100.0f, 0.0f };
 const VECTOR MODEL_SCALE = { 0.01f, 0.01f, 0.01f };
+
+
+const float NORMAL_ANIM_SPEED = 60.0f;
 
 namespace MyEngine {
 
@@ -125,7 +130,7 @@ namespace MyEngine {
 
 		indices = { 0,1,3,0,3,2 };
 
-		
+
 		//return DrawPrimitiveIndexed2DToShader(vertices.data(),//アドレス
 		//	vertices.size(),//頂点数
 		//	indices.data(),
@@ -142,7 +147,10 @@ namespace MyEngine {
 
 NormalEnemy::NormalEnemy(void)
 {
-	
+	//関数ポインタの初期化
+	stateChange_.emplace(STATE::THINK, std::bind(&NormalEnemy::ChangeThink, this));
+	stateChange_.emplace(STATE::MOVE, std::bind(&NormalEnemy::ChangeMove, this));
+	stateChange_.emplace(STATE::ATTACK, std::bind(&NormalEnemy::ChangeAttack, this));
 }
 
 NormalEnemy::~NormalEnemy(void)
@@ -156,9 +164,9 @@ void NormalEnemy::Init(void)
 	transform_.scl = MODEL_SCALE;
 	transform_.quaRot = Quaternion();
 	transform_.pos = DEFAULT_POS;
-	
+
 	deltaTime = SceneManager::GetInstance().GetDeltaTime();
-	
+
 	camera_ = std::make_unique<Camera>();
 	renderer_ = std::make_unique<ModelRenderer>(transform_.modelId, *material_);
 
@@ -168,9 +176,14 @@ void NormalEnemy::Init(void)
 	InitDissolve();
 }
 
-void NormalEnemy::InitAnim(void)
+void NormalEnemy::InitAnimation(void)
 {
+	std::string path = Application::PATH_MODEL + "Player/";
+	animationController_ = std::make_unique<AnimationController>(transform_.modelId);
 
+	// 待機アニメーション
+	animationController_->Add("IDLE", path + "Idle.mv1",
+		0.0f, NORMAL_ANIM_SPEED, resMng_.LoadModelDuplicate(ResourceManager::SRC::PLAYER), true, 0, false);
 }
 
 void NormalEnemy::InitDissolve(void)
@@ -246,6 +259,48 @@ void NormalEnemy::SetPos(VECTOR pos)
 	transform_.Update();
 }
 
+void NormalEnemy::ChangeState(STATE state)
+{
+	preState_ = state_;
+
+	state_ = state;
+
+	stateChange_[state_]();
+
+	preAnimationKey_ = animationKey_;
+
+	animationKey_ = ANIM_DATA_KEY[(int)state];
+
+	animationController_->ChangeAnimation(animationKey_);
+}
+
+void NormalEnemy::ChangeThink(void)
+{
+	stateUpdate_ = std::bind(&NormalEnemy::UpdateThink, this);
+}
+
+void NormalEnemy::ChangeMove(void)
+{
+	stateUpdate_ = std::bind(&NormalEnemy::UpdateMove, this);
+}
+
+void NormalEnemy::ChangeAttack(void)
+{
+	stateUpdate_ = std::bind(&NormalEnemy::UpdateAttack, this);
+}
+
+void NormalEnemy::UpdateThink(void)
+{
+}
+
+void NormalEnemy::UpdateMove(void)
+{
+}
+
+void NormalEnemy::UpdateAttack(void)
+{
+}
+
 void NormalEnemy::MakeDissolve(void)
 {
 	SetDrawScreen(renderTarget_[FIRST_RENDERTARGET]);
@@ -274,7 +329,7 @@ void NormalEnemy::MakeDissolve(void)
 	// 1番,2番を解除
 	SetRenderTargetToShader(1, -1);
 	SetRenderTargetToShader(2, -1);
-	
+
 	SetDrawScreen(renderTarget_[SECOND_RENDERTARGET]);
 	ClearDrawScreen();
 	//GraphFilterBlt(renderTarget_[FIRST_RENDERTARGET], renderTarget_[BLUR], DX_GRAPH_FILTER_GAUSS, 8, 1400);
@@ -284,7 +339,7 @@ void NormalEnemy::MakeDissolve(void)
 	//DrawGraph(0, 0, postEffect_, true);
 	MyEngine::DrawGraph(0, 0, renderTarget_[FIRST_RENDERTARGET], postEffect_, renderTarget_[BLUR], renderTarget_[DEPTH], renderTarget_[NORMAL], true);
 	ClearDrawScreen();
-	
+
 	SetRenderTargetToShader(1, -1);
 
 	SetUseTextureToShader(0, -1);//0番を解除
@@ -297,7 +352,7 @@ void NormalEnemy::MakeDissolve(void)
 	/*GraphFilterBlt(renderTarget_[OUTLINE], renderTarget_[BLUR], DX_GRAPH_FILTER_GAUSS, 8, 1400);
 	GraphFilterBlt(renderTarget_[BLUR], renderTarget_[SHRINK], DX_GRAPH_FILTER_DOWN_SCALE, 2);
 	GraphFilter(renderTarget_[SHRINK], DX_GRAPH_FILTER_GAUSS, 8, 1400);*/
-	DrawGraph(0, 0, renderTarget_[SECOND_RENDERTARGET], true); 
+	DrawGraph(0, 0, renderTarget_[SECOND_RENDERTARGET], true);
 	//DrawGraph(0, 0, renderTarget_[FIRST_RENDERTARGET], true);
 
 	/*SetDrawBlendMode(DX_BLENDMODE_MULA, 255);
