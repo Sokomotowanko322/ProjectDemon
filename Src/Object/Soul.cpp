@@ -22,7 +22,7 @@ Soul::Soul(std::weak_ptr<Player> player)
 	player_ = player;
 
 	// 敵の座標情報をとるため生成
-	normalEnemy_ = std::make_shared<NormalEnemy>();
+	normalEnemy_ = std::make_shared<NormalEnemy>(player_);
 
 	// 浮遊速度などの初期化
 	soulMoveCnt_ = 0.0f;
@@ -85,8 +85,8 @@ void Soul::StopEffect(void)
 void Soul::UpdateInhale(void)
 {
 	
-	const float deltaTime = SceneManager::GetInstance().GetDeltaTime();
-	soulMoveCnt_ += deltaTime;
+	const float deltaTime_ = SceneManager::GetInstance().GetDeltaTime();
+	soulMoveCnt_ += deltaTime_;
 	
 	// エネミーからプレイヤーまでのベクトルを計算
 	VECTOR direction = VSub(playerPos_, followSoulPos_[SOUL_TYPE::BLUE]);
@@ -106,9 +106,9 @@ void Soul::UpdateInhale(void)
 
 	// 移動量を計算
 	VECTOR movePow;
-	movePow.x = direction.x * moveSpeed_ * deltaTime;
-	movePow.y = direction.y * moveSpeed_ * deltaTime;
-	movePow.z = direction.z * moveSpeed_ * deltaTime;
+	movePow.x = direction.x * moveSpeed_ * deltaTime_;
+	movePow.y = direction.y * moveSpeed_ * deltaTime_;
+	movePow.z = direction.z * moveSpeed_ * deltaTime_;
 
 	// 魂を移動
 	followSoulPos_[SOUL_TYPE::BLUE].x += movePow.x * SOUL_INHALE_SPEED;
@@ -129,14 +129,14 @@ void Soul::UpdateInhale(void)
 
 void Soul::UpdateFloating(void)
 {
-	const float deltaTime = SceneManager::GetInstance().GetDeltaTime();
-	soulMoveCnt_ += deltaTime;
+	const float deltaTime_ = SceneManager::GetInstance().GetDeltaTime();
+	soulMoveCnt_ += deltaTime_;
 
 	// 三角関数を使用して浮遊させる
 	preFollowSoulPos_[SOUL_TYPE::BLUE] = followSoulPos_[SOUL_TYPE::BLUE];
-	followSoulPos_[SOUL_TYPE::BLUE].x += sinf(soulMoveCnt_ * 0.7f) * moveSpeed_ * deltaTime;
-	followSoulPos_[SOUL_TYPE::BLUE].y += cosf(soulMoveCnt_ * 1.0f) * moveSpeed_ * deltaTime;
-	followSoulPos_[SOUL_TYPE::BLUE].z += sinf(soulMoveCnt_ * 0.7f) * moveSpeed_ * deltaTime;
+	followSoulPos_[SOUL_TYPE::BLUE].x += sinf(soulMoveCnt_ * 0.7f) * moveSpeed_ * deltaTime_;
+	followSoulPos_[SOUL_TYPE::BLUE].y += cosf(soulMoveCnt_ * 1.0f) * moveSpeed_ * deltaTime_;
+	followSoulPos_[SOUL_TYPE::BLUE].z += sinf(soulMoveCnt_ * 0.7f) * moveSpeed_ * deltaTime_;
 
 	// 尾を引かせるために後ろの座標をとる
 	VECTOR movePow = VSub(followSoulPos_[SOUL_TYPE::BLUE], preFollowSoulPos_[SOUL_TYPE::BLUE]);
@@ -145,7 +145,7 @@ void Soul::UpdateFloating(void)
 	VECTOR m = moveRot.ToEuler();
 
 	// 時間経過で回転
-	effectRot_ += deltaTime * SOUL_ROT_SPEED;
+	effectRot_ += deltaTime_ * SOUL_ROT_SPEED;
 
 	SetRotationPlayingEffekseer3DEffect(effectSoulPlayId_[SOUL_TYPE::BLUE], m.x, m.y, m.z);
 	SetPosPlayingEffekseer3DEffect(effectSoulPlayId_[SOUL_TYPE::BLUE], followSoulPos_[SOUL_TYPE::BLUE].x,

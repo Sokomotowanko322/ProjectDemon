@@ -31,7 +31,7 @@ private:
 	std::shared_ptr<Soul> soul_;
 
 	// 敵
-	std::unique_ptr<NormalEnemy> normalEnemy_;
+	std::shared_ptr<NormalEnemy> normalEnemy_;
 
 	// スカイドーム
 	std::unique_ptr<SkyDome> skyDome_;

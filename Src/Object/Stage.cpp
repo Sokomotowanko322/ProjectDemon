@@ -11,7 +11,7 @@
 #include "Common/Transform.h"
 #include "Stage.h"
 
-Stage::Stage(Player& player)
+Stage::Stage(std::weak_ptr<Player> player)
 	:
 	resMng_(ResourceManager::GetInstance()),
 	player_(player)
@@ -84,8 +84,8 @@ void Stage::ChangeStage(NAME type)
 	activePlanet_ = GetPlanet(activeName_);
 
 	// ステージの当たり判定をプレイヤーに設定
-	player_.ClearCollider();
-	player_.AddCollider(activePlanet_.lock()->GetTransform().collider);
+	player_->ClearCollider();
+	player_->AddCollider(activePlanet_.lock()->GetTransform().collider);
 
 	step_ = TIME_STAGE_CHANGE;
 
@@ -131,17 +131,17 @@ void Stage::MakeMainStage(void)
 void Stage::MakeEnvironment(void)
 {
 
-	auto normalEnemy = std::make_shared<NormalEnemy>();
+	auto normalEnemy = std::make_shared<NormalEnemy>(player_);
 	normalEnemy->Init();
 	normalEnemy->SetPos({ -300.0f, -30.0f, 500.0f });
 	normalEnemy_.emplace_back(std::move(normalEnemy));
 
-	normalEnemy = std::make_shared<NormalEnemy>();
+	normalEnemy = std::make_shared<NormalEnemy>(player_);
 	normalEnemy->Init();
 	normalEnemy->SetPos({ 250.0f, -60.0f, 900.0f });
 	normalEnemy_.emplace_back(std::move(normalEnemy));
 
-	normalEnemy = std::make_shared<NormalEnemy>();
+	normalEnemy = std::make_shared<NormalEnemy>(player_);
 	normalEnemy->Init();
 	normalEnemy->SetPos({ -20.0f, -45.0f, 1600.0f });
 	normalEnemy_.emplace_back(std::move(normalEnemy));

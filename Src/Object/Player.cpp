@@ -56,7 +56,7 @@ const float INHALE_STARTSTEP = 30.0f;
 Player::Player(void)
 {
 	animationController_ = nullptr;
-	state_ = STATE::PLAY;
+	state_ = MOVE_STATE::PLAY;
 	
 	// 手に持つ武器
 	weapon_ = std::make_shared<Weapon>();
@@ -92,9 +92,9 @@ Player::Player(void)
 	capsule_ = nullptr;
 
 	// 状態管理
-	stateChanges_.emplace(STATE::NONE, std::bind(&Player::ChangeStateNone, this));
-	stateChanges_.emplace(STATE::PLAY, std::bind(&Player::ChangeStatePlay, this));
-	stateChanges_.emplace(STATE::INHALE, std::bind(&Player::ChangeStateInhale, this));
+	stateChanges_.emplace(MOVE_STATE::NONE, std::bind(&Player::ChangeStateNone, this));
+	stateChanges_.emplace(MOVE_STATE::PLAY, std::bind(&Player::ChangeStatePlay, this));
+	stateChanges_.emplace(MOVE_STATE::INHALE, std::bind(&Player::ChangeStateInhale, this));
 	
 }
 
@@ -172,7 +172,7 @@ void Player::Init(void)
 
 	// 初期状態
 	ChangeAnim(ANIM_TYPE::IDLE);
-	ChangeState(STATE::PLAY);
+	ChangeState(MOVE_STATE::PLAY);
 }
 
 void Player::Update(void)
@@ -244,6 +244,11 @@ const Transform& Player::GetHipsTransform(void) const
 VECTOR& Player::GetLeftHandPos(void)
 {
 	return leftHandPos_;
+}
+
+VECTOR& Player::GetPos(void)
+{
+	return transform_.pos;
 }
 
 const Player::ANIM_TYPE Player::GetNowAnim(void) const
@@ -325,7 +330,7 @@ void Player::DisableAnimMovePow(void)
 
 }
 
-void Player::ChangeState(STATE state)
+void Player::ChangeState(MOVE_STATE state)
 {
 	// 以前の状態を入れる
 	preState_ = state_;
@@ -641,12 +646,12 @@ void Player::MoveControll(void)
 void Player::ProcessAttack(void)
 {
 	auto& ins = InputManager::GetInstance();
-	float deltaTime = SceneManager::GetInstance().GetDeltaTime();
+	float deltaTime_ = SceneManager::GetInstance().GetDeltaTime();
 
 	// コンボタイマーを減らす
 	if (comboInputTime_ >= 0.0f)
 	{
-		comboInputTime_ -= deltaTime;
+		comboInputTime_ -= deltaTime_;
 	}
 	else
 	{

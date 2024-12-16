@@ -3,6 +3,7 @@
 #include "../Common/Quaternion.h"
 #include "EnemyBase.h"
 
+class Player;
 class AnimationController;
 class Collider;
 class Capsule;
@@ -27,10 +28,10 @@ public:
 		float dummy2[2];
 	};
 
-	enum class STATE
+	enum class MOVE_STATE
 	{
-		THINK,
-		MOVE,
+		IDLE,
+		WALK,
 		ATTACK
 	};
 
@@ -69,7 +70,7 @@ public:
 
 
 	// コンストラクタ
-	NormalEnemy(void);
+	NormalEnemy(std::weak_ptr<Player> player);
 
 	// デストラクタ
 	~NormalEnemy(void);
@@ -92,28 +93,28 @@ public:
 	void SetPos(VECTOR pos);
 
 	// 状態遷移
-	void ChangeState(STATE state);
+	void ChangeState(MOVE_STATE state);
 
 private:
 
 	// アニメーション遷移用
-	STATE state_;
-	STATE preState_;
+	MOVE_STATE state_;
+	MOVE_STATE preState_;
 
 	// STATE内に格納するキー
 	std::string animationKey_;
 	std::string preAnimationKey_;
 
 	// STATEの変更、関数内で同時にUPDATEとアニメーションを呼び出す
-	std::unordered_map<STATE, std::function<void(void)>> stateChange_;
-	void ChangeThink(void);
+	std::unordered_map<MOVE_STATE, std::function<void(void)>> stateChange_;
+	void ChangeIdle(void);
 	void ChangeMove(void);
 	void ChangeAttack(void);
 
 	// 更新
 	std::function<void(void)> stateUpdate_;
-	void UpdateThink(void);
-	void UpdateMove(void);
+	void UpdateIdle(void);
+	void UpdateWalk(void);
 	void UpdateAttack(void);
 
 	// モデル描画用用
@@ -122,9 +123,6 @@ private:
 
 	// アニメーション制御用
 	std::unique_ptr<AnimationController> animationController_;
-
-	// 魂の情報取得
-	//std::shared_ptr<Soul> soul_;
 
 	// カメラ情報の取得
 	std::unique_ptr<Camera> camera_;
@@ -147,8 +145,15 @@ private:
 	int postEffect_;
 
 	// デルタタイム
-	float deltaTime;
+	float deltaTime_;
 
+	// 回転にかかる時間
+	float rotationStep_;
+
+	// 次の攻撃までのディレイ
+	float attackDelay_;
+	float cntDelay_;
+	
 	float sinTime_;
 	float offset_;
 };

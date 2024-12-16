@@ -20,7 +20,7 @@ class Player : public ActorBase
 public:
 
 	// プレイ中の遷移状態
-	enum class STATE
+	enum class MOVE_STATE
 	{
 		NONE,
 		PLAY,
@@ -85,9 +85,12 @@ public:
 
 	// 衝突用カプセルの取得
 	const Capsule& GetCapsule(void) const;
+	
+	// 武器の取得
 	const Transform& GetWeapon(void) const;
 	const Transform& GetHipsTransform(void) const;
 	VECTOR& GetLeftHandPos(void);
+	VECTOR& GetPos(void);
 	const ANIM_TYPE GetNowAnim(void) const;
 
 private:
@@ -122,14 +125,14 @@ private:
 	std::vector<std::string> currentState_;
 
 	// 状態管理
-	STATE state_;
-	STATE preState_;
+	MOVE_STATE state_;
+	MOVE_STATE preState_;
 	
 	// アニメーション種別
 	ANIM_TYPE animType_;
 
 	// 状態管理(状態遷移時初期処理)
-	std::map<STATE, std::function<void(void)>> stateChanges_;
+	std::map<MOVE_STATE, std::function<void(void)>> stateChanges_;
 	// 状態管理(更新ステップ)
 	std::function<void(void)> stateUpdate_;
 
@@ -204,7 +207,7 @@ private:
 	void DisableAnimMovePow(void);
 
 	// 状態遷移
-	void ChangeState(STATE state);
+	void ChangeState(MOVE_STATE state);
 	void ChangeStateNone(void);
 	void ChangeStatePlay(void);
 	void ChangeStateInhale(void);

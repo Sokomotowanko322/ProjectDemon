@@ -67,8 +67,8 @@ void AnimationController::Update(void)
 {
 
 	// 経過時間の取得
-	float deltaTime = SceneManager::GetInstance().GetDeltaTime();
-	float slowTime = deltaTime / SLOW_RATE;
+	float deltaTime_ = SceneManager::GetInstance().GetDeltaTime();
+	float slowTime = deltaTime_ / SLOW_RATE;
 
 	// レートの計算
 	float rate = 1.0f;
@@ -84,7 +84,7 @@ void AnimationController::Update(void)
 		// ブレンドレートを下げていく
 		if (!isSlow_)
 		{
-			animData.second.blendRate -= deltaTime / animData.second.blendTime * gameSpeed_;
+			animData.second.blendRate -= deltaTime_ / animData.second.blendTime * gameSpeed_;
 		}
 		else
 		{
@@ -144,7 +144,7 @@ void AnimationController::Update(void)
 
 			if (!isSlow_)
 			{
-				animData.second.stepAnim += (deltaTime * animData.second.speedAnim * gameSpeed_);
+				animData.second.stepAnim += (deltaTime_ * animData.second.speedAnim * gameSpeed_);
 			}
 			else
 			{
@@ -159,7 +159,7 @@ void AnimationController::Update(void)
 
 			if (!isSlow_)
 			{
-				animData.second.stepAnim -= deltaTime * animData.second.speedAnim * gameSpeed_;
+				animData.second.stepAnim -= deltaTime_ * animData.second.speedAnim * gameSpeed_;
 			}
 			else
 			{

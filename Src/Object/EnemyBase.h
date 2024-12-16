@@ -1,8 +1,10 @@
 #pragma once
 #include "Common/Transform.h"
 
+class Player;
 class ResourceManager;
 class SceneManager;
+class AnimationController;
 
 class EnemyBase
 {
@@ -24,10 +26,29 @@ private:
 
 protected:
 
+	// プレイヤー
+	std::weak_ptr<Player> player_;
+
 	// シングルトン参照
 	ResourceManager& resMng_;
 	SceneManager& scnMng_;
 
+	// アニメーション制御
+	std::unique_ptr<AnimationController> animationController_;
+
 	// モデル制御の基本情報
 	Transform transform_;
+
+	// 回転の差分
+	VECTOR diff_;
+	
+	// クォータニオン回転
+	Quaternion quaRot_;
+	// クォータニオン回転値代入用
+	Quaternion rot_;
+
+
+	// 回転の内積
+	float dot_;
+
 };

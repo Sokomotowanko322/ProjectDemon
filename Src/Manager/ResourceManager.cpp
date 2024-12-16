@@ -63,6 +63,8 @@ void ResourceManager::Init(void)
 	resourcesMap_.emplace(SRC::STAGE, std::move(res));
 
 	// “Gƒ‚ƒfƒ‹
+	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Enemy/NormalEnemy.mv1");
+	resourcesMap_.emplace(SRC::NORMAL_ENEMY, std::move(res));
 	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Enemy/EnemyBoss.mv1");
 	resourcesMap_.emplace(SRC::ENEMY_BOSS_TYPE1, std::move(res));
 	
@@ -88,6 +90,16 @@ void ResourceManager::Init(void)
 	// ‹zû“®ì
 	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Player/Inhale.mv1");
 	resourcesMap_.emplace(SRC::PLAYER_INHALE, std::move(res));
+
+#pragma endregion
+
+#pragma region “G‚ÌƒAƒjƒ[ƒVƒ‡ƒ“
+	
+	// “G
+	// ˆÚ“®Œn
+	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Enemy/NormalEnemyAnim/Idle.mv1");
+	resourcesMap_.emplace(SRC::NORMAL_ENEMY_IDLE, std::move(res));
+
 
 #pragma endregion
 

@@ -2,7 +2,7 @@
 #include "../Application.h"
 #include "Fader.h"
 
-Fader::STATE Fader::GetState(void) const
+Fader::MOVE_STATE Fader::GetState(void) const
 {
 	return state_;
 }
@@ -12,10 +12,10 @@ bool Fader::IsEnd(void) const
 	return isEnd_;
 }
 
-void Fader::SetFade(STATE state)
+void Fader::SetFade(MOVE_STATE state)
 {
 	state_ = state;
-	if (state_ != STATE::NONE)
+	if (state_ != MOVE_STATE::NONE)
 	{
 		isPreEnd_ = false;
 		isEnd_ = false;
@@ -24,7 +24,7 @@ void Fader::SetFade(STATE state)
 
 void Fader::Init(void)
 {
-	state_ = STATE::NONE;
+	state_ = MOVE_STATE::NONE;
 	alpha_ = 0;
 	isPreEnd_ = true;
 	isEnd_ = true;
@@ -40,10 +40,10 @@ void Fader::Update(void)
 
 	switch (state_)
 	{
-	case STATE::NONE:
+	case MOVE_STATE::NONE:
 		return;
 
-	case STATE::FADE_OUT:
+	case MOVE_STATE::FADE_OUT:
 		alpha_ += SPEED_ALPHA;
 		if (alpha_ > 255)
 		{
@@ -59,7 +59,7 @@ void Fader::Update(void)
 
 		break;
 
-	case STATE::FADE_IN:
+	case MOVE_STATE::FADE_IN:
 		alpha_ -= SPEED_ALPHA;
 		if (alpha_ < 0)
 		{
@@ -85,10 +85,10 @@ void Fader::Draw(void)
 
 	switch (state_)
 	{
-	case STATE::NONE:
+	case MOVE_STATE::NONE:
 		return;
-	case STATE::FADE_OUT:
-	case STATE::FADE_IN:
+	case MOVE_STATE::FADE_OUT:
+	case MOVE_STATE::FADE_IN:
 		SetDrawBlendMode(DX_BLENDMODE_ALPHA, (int)alpha_);
 		DrawBox(
 			0, 0,

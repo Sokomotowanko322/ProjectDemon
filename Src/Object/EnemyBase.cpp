@@ -1,5 +1,6 @@
 #include "../Manager/ResourceManager.h"
 #include "../Manager/SceneManager.h"
+#include "../Object/Common/AnimationController.h"
 #include "EnemyBase.h"
 
 EnemyBase::EnemyBase(void)

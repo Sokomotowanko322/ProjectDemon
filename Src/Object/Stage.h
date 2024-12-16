@@ -23,7 +23,7 @@ public:
 	};
 
 	// コンストラクタ
-	Stage(Player& player);
+	Stage(std::weak_ptr<Player> player);
 
 	// デストラクタ
 	~Stage(void);
@@ -42,7 +42,9 @@ private:
 
 	// シングルトン参照
 	ResourceManager& resMng_;
-	Player& player_;
+
+	// プレイヤー
+	std::shared_ptr<Player> player_;
 	
 	// ステージアクティブになっている惑星の情報
 	NAME activeName_;

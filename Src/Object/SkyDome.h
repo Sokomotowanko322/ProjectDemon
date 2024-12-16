@@ -13,7 +13,7 @@ public:
 	static constexpr VECTOR SCALES = { MODEL_SCALE, MODEL_SCALE, MODEL_SCALE };
 
 	// 状態
-	enum class STATE
+	enum class MOVE_STATE
 	{
 		NONE,
 		STAY,
@@ -36,14 +36,14 @@ private:
 	const Transform& syncTransform_;
 
 	// 状態
-	STATE state_;
+	MOVE_STATE state_;
 	// 状態管理(状態遷移時初期処理)
-	std::map<STATE, std::function<void(void)>> stateChanges_;
+	std::map<MOVE_STATE, std::function<void(void)>> stateChanges_;
 	// 状態管理(更新ステップ)
 	std::function<void(void)> stateUpdate_;
 
 	// 状態遷移
-	void ChangeState(STATE state);
+	void ChangeState(MOVE_STATE state);
 	void ChangeStateNone(void);
 	void ChangeStateStay(void);
 	void ChangeStateFollow(void);

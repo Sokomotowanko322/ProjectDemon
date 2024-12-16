@@ -30,17 +30,16 @@ void GameScene::Init(void)
 	player_->Init();
 	
 	// ステージ
-	stage_ = std::make_unique<Stage>(*player_);
+	stage_ = std::make_unique<Stage>(player_);
 	stage_->Init();
 	
 	soul_ = std::make_shared<Soul>(player_);
 	soul_->Init();
 
 	// 敵
-	normalEnemy_ = std::make_unique<NormalEnemy>();
+	normalEnemy_ = std::make_shared<NormalEnemy>(player_);
 	normalEnemy_->Init();
 
-	
 	// ステージの初期設定
 	stage_->ChangeStage(Stage::NAME::STAGE);
 
