@@ -20,7 +20,7 @@ class Player : public ActorBase
 public:
 
 	// プレイ中の遷移状態
-	enum class MOVE_STATE
+	enum class STATE
 	{
 		NONE,
 		PLAY,
@@ -81,6 +81,7 @@ public:
 
 	// 衝突判定に用いられるコライダ制御
 	void AddCollider(std::weak_ptr<Collider> collider);
+	void MakeCollider(void);
 	void ClearCollider(void);
 
 	// 衝突用カプセルの取得
@@ -125,14 +126,14 @@ private:
 	std::vector<std::string> currentState_;
 
 	// 状態管理
-	MOVE_STATE state_;
-	MOVE_STATE preState_;
+	STATE state_;
+	STATE preState_;
 	
 	// アニメーション種別
 	ANIM_TYPE animType_;
 
 	// 状態管理(状態遷移時初期処理)
-	std::map<MOVE_STATE, std::function<void(void)>> stateChanges_;
+	std::map<STATE, std::function<void(void)>> stateChanges_;
 	// 状態管理(更新ステップ)
 	std::function<void(void)> stateUpdate_;
 
@@ -207,7 +208,7 @@ private:
 	void DisableAnimMovePow(void);
 
 	// 状態遷移
-	void ChangeState(MOVE_STATE state);
+	void ChangeState(STATE state);
 	void ChangeStateNone(void);
 	void ChangeStatePlay(void);
 	void ChangeStateInhale(void);

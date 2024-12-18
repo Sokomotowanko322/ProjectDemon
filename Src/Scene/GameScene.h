@@ -6,6 +6,7 @@ class SkyDome;
 class Player;
 class Soul;
 class NormalEnemy;
+class TestEnemy;
 
 class GameScene : public SceneBase
 {
@@ -32,6 +33,7 @@ private:
 
 	// 敵
 	std::shared_ptr<NormalEnemy> normalEnemy_;
+	std::shared_ptr<TestEnemy> testEnemy_;
 
 	// スカイドーム
 	std::unique_ptr<SkyDome> skyDome_;

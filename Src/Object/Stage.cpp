@@ -6,6 +6,7 @@
 #include "../Manager/ResourceManager.h"
 #include "Player.h"
 #include "Planet.h"
+#include "TestEnemy.h"
 #include "NormalEnemy.h"
 #include "Common/Collider.h"
 #include "Common/Transform.h"
@@ -43,18 +44,18 @@ void Stage::Init(void)
 
 void Stage::Update(void)
 {
-
+	normalEnemy_.emplace_back(std::make_shared<TestEnemy>(player_));
 	//// 惑星
 	//for (const auto& s : planets_)
 	//{
 	//	s.second->Update();
 	//}
 
-	//// 骸骨オブジェクト
-	//for (const auto& s : skulls_)
-	//{
-	//	s->Update();
-	//}
+	// 骸骨オブジェクト
+	/*for (const auto& s : normalEnemy_)
+	{
+		s->Update();
+	}*/
 
 }
 
@@ -83,10 +84,19 @@ void Stage::ChangeStage(NAME type)
 	// 対象のステージを取得する
 	activePlanet_ = GetPlanet(activeName_);
 
-	// ステージの当たり判定をプレイヤーに設定
+	// ステージの当たり判定をプレイヤーとエネミーに設定
 	player_->ClearCollider();
 	player_->AddCollider(activePlanet_.lock()->GetTransform().collider);
+	//normalEnemy_->ClearCollider();
+	//normalEnemy_->AddCollider(activePlanet_.lock()->GetTransform().collider);
 
+	//for (const auto& enemy : normalEnemy_)
+	//{
+	//	if (!enemy) continue; // nullptr チェック
+
+	//	enemy->ClearCollider();
+	//	enemy->AddCollider(activePlanet_.lock()->GetTransform().collider);
+	//}
 	step_ = TIME_STAGE_CHANGE;
 
 }

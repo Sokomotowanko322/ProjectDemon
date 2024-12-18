@@ -8,6 +8,7 @@
 #include "../Object/SkyDome.h"
 #include "../Object/Stage.h"
 #include "../Object/Soul.h"
+#include "../Object/TestEnemy.h"
 #include "../Object/NormalEnemy.h"
 #include "../Object/Player.h"
 #include "GameScene.h"
@@ -39,6 +40,9 @@ void GameScene::Init(void)
 	// “G
 	normalEnemy_ = std::make_shared<NormalEnemy>(player_);
 	normalEnemy_->Init();
+	
+	testEnemy_ = std::make_shared<TestEnemy>(player_);
+	testEnemy_->Init();
 
 	// ƒXƒe[ƒW‚Ì‰ŠúÝ’è
 	stage_->ChangeStage(Stage::NAME::STAGE);
@@ -64,21 +68,23 @@ void GameScene::Update(void)
 		SceneManager::GetInstance().ChangeScene(SceneManager::SCENE_ID::TITLE);
 	}
 
-	normalEnemy_->Update();
 	skyDome_->Update();
 
 	stage_->Update();
 
 	player_->Update();
 	soul_->Update();
-
+	//normalEnemy_->Update();
+	testEnemy_->Update();
+	
 }
 
 void GameScene::Draw(void)
 {
 	// ”wŒi
 	skyDome_->Draw();
-	normalEnemy_->Draw();
+	//normalEnemy_->Draw();
+	testEnemy_->Draw();
 	
 	soul_->Draw();
 	stage_->Draw();

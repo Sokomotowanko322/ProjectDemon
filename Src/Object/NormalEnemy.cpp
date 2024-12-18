@@ -29,11 +29,14 @@ const char DATA_DISSOLVE[] = "Data/Image/Dissolve.png";
 
 const char IDLE[] = "IDLE";
 const char WALK[] = "WALK";
+const char PATH_NORMALENEMY[] = "Enemy/NormalEnemyAnim";
+;
 
 // 座標系
 const VECTOR DEFAULT_POS = { 0.0f, -100.0f, 0.0f };
 const VECTOR MODEL_SCALE = { 0.01f, 0.01f, 0.01f };
 
+const float VIEW_ANGLE = 30.0f;
 const float VIEW_RANGE = 3000.0f;
 const float HEARING_RANGE = 3000.0f;
 const float DEVIDE_STEPCOUNT = 4.0f;
@@ -42,6 +45,8 @@ const float DOT_MIN = 0.99f;
 const float WALK_SPEED = 4.0f;
 const float NORMAL_ANIM_SPEED = 60.0f;
 const float ROTATION_MIN = 0.001f;
+
+bool searching_ = false;
 
 namespace MyEngine {
 
@@ -156,14 +161,14 @@ namespace MyEngine {
 }
 
 NormalEnemy::NormalEnemy(std::weak_ptr<Player> player)
-	: state_(MOVE_STATE::IDLE)
+	/*: state_(STATE::IDLE)*/
 {
 	player_ = player;
 
 	//関数ポインタの初期化
-	stateChange_.emplace(MOVE_STATE::IDLE, std::bind(&NormalEnemy::ChangeIdle, this));
-	stateChange_.emplace(MOVE_STATE::WALK, std::bind(&NormalEnemy::ChangeMove, this));
-	stateChange_.emplace(MOVE_STATE::ATTACK, std::bind(&NormalEnemy::ChangeAttack, this));
+	stateChange_.emplace(STATE::IDLE, std::bind(&NormalEnemy::ChangeIdle, this));
+	stateChange_.emplace(STATE::WALK, std::bind(&NormalEnemy::ChangeWalk, this));
+	stateChange_.emplace(STATE::ATTACK, std::bind(&NormalEnemy::ChangeAttack, this));
 }
 
 NormalEnemy::~NormalEnemy(void)
@@ -173,15 +178,19 @@ NormalEnemy::~NormalEnemy(void)
 void NormalEnemy::Init(void)
 {
 	// モデルの基本設定
-	transform_.modelId = (ResourceManager::GetInstance().Load(ResourceManager::SRC::NORMAL_ENEMY).handleId_);
+	transform_.SetModel(ResourceManager::GetInstance().LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY));
 	transform_.scl = MODEL_SCALE;
 	transform_.quaRot = Quaternion();
 	transform_.pos = DEFAULT_POS;
 
+	transform_.Update();
+
 	deltaTime_ = SceneManager::GetInstance().GetDeltaTime();
 
 
-
+	cntDelay_ = 2.0f;
+	attackDelay_ = 2.0f;
+	dot_ = 0.0f;
 	camera_ = std::make_unique<Camera>();
 	//renderer_ = std::make_unique<ModelRenderer>(transform_.modelId, *material_);
 
@@ -190,24 +199,22 @@ void NormalEnemy::Init(void)
 
 	InitDissolve();
 	InitAnimation();
-	
-	ChangeState(MOVE_STATE::IDLE);
-	//animationController_->ChangeAnimation(IDLE);
+	ChangeState(STATE::IDLE);
 }
 
 void NormalEnemy::InitAnimation(void)
 {
-	std::string path = Application::PATH_MODEL + "Enemy/NormalEnemyAnim";
+	std::string path = Application::PATH_MODEL + PATH_NORMALENEMY;
 	animationController_ = std::make_unique<AnimationController>(transform_.modelId);
 
 	// 待機アニメーション
-	animationController_->Add("IDLE", path + "Idle.mv1",
-		0.0f, NORMAL_ANIM_SPEED, resMng_.LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY_IDLE), true, 0, false);
+	animationController_->Add(IDLE, path + "Idle.mv1",
+		0.0f, NORMAL_ANIM_SPEED, resMng_.LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY_IDLE), false, 0, false);
 	// 移動アニメーション
-	animationController_->Add("WALK", path + "Walk.mv1",
-		0.0f, NORMAL_ANIM_SPEED, resMng_.LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY_WALK), true, 0, false);
-	animationController_->Add("RUN", path + "Idle.mv1",
-		0.0f, NORMAL_ANIM_SPEED, resMng_.LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY), true, 0, false);
+	animationController_->Add(WALK, path + "Walk.mv1",
+		0.0f, NORMAL_ANIM_SPEED, resMng_.LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY_WALK), false, 0, false);
+	/*animationController_->Add("RUN", path + "Idle.mv1",
+		0.0f, NORMAL_ANIM_SPEED, resMng_.LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY), true, 0, false);*/
 }
 
 void NormalEnemy::InitDissolve(void)
@@ -259,7 +266,7 @@ void NormalEnemy::InitDissolve(void)
 
 void NormalEnemy::Update(void)
 {
-
+	
 	// モデル制御更新
 	transform_.Update();
 
@@ -268,7 +275,6 @@ void NormalEnemy::Update(void)
 
 	// アニメーション更新
 	animationController_->Update();
-
 	MakeDissolve();
 
 	if (CheckHitKey(KEY_INPUT_Q))
@@ -279,12 +285,18 @@ void NormalEnemy::Update(void)
 	{
 		data_->dissolveHeight_ -= 0.01f;
 	}
+
+	
 }
 
 void NormalEnemy::Draw(void)
 {
 	float deltaTime_ = SceneManager::GetInstance().GetDeltaTime();
+	
 	MV1DrawModel(transform_.modelId);
+	// 現在のSTATEを表示する
+	DrawFormatString(0, 90, GetColor(255, 255, 255), "Current STATE: %d", state_);
+
 }
 
 void NormalEnemy::SetPos(VECTOR pos)
@@ -293,7 +305,7 @@ void NormalEnemy::SetPos(VECTOR pos)
 	transform_.Update();
 }
 
-void NormalEnemy::ChangeState(MOVE_STATE state)
+void NormalEnemy::ChangeState(STATE state)
 {
 	preState_ = state_;
 
@@ -313,7 +325,7 @@ void NormalEnemy::ChangeIdle(void)
 	stateUpdate_ = std::bind(&NormalEnemy::UpdateIdle, this);
 }
 
-void NormalEnemy::ChangeMove(void)
+void NormalEnemy::ChangeWalk(void)
 {
 	stateUpdate_ = std::bind(&NormalEnemy::UpdateWalk, this);
 }
@@ -346,10 +358,10 @@ void NormalEnemy::UpdateIdle(void)
 		transform_.quaRot, Quaternion::LookRotation(diff_), rotationStep_ / DEVIDE_STEPCOUNT);
 	transform_.quaRot = quaRot_;
 
-	//差分が限りなく1に近かったらWALKしない
+	// 差分が限りなく1に近かったらWALKしない
 	if (dot_ <= DOT_MIN)
 	{
-		//プレイヤーの方向を向くまではWALKをする
+		// プレイヤーの方向を向くまではWALKをする
 		animationController_->ChangeAnimation(WALK);
 	}
 	else
@@ -371,57 +383,72 @@ void NormalEnemy::UpdateIdle(void)
 
 void NormalEnemy::UpdateWalk(void)
 {
-	// プレイヤーの座標を取得
-	VECTOR pPos = player_.lock()->GetPos();
-
-	// エネミーからプレイヤーまでのベクトル
-	VECTOR diff = VSub(pPos, transform_.pos);
-
-	// XZ距離
-	float distance = diff.x * diff.x + diff.z * diff.z;
-
-	VECTOR vec;
-	vec = VSub(pPos, transform_.pos);
-	VECTOR direction = VNorm(vec);
-
-	// 聴覚
-	if (distance <= HEARING_RANGE * HEARING_RANGE)
-	{
-		ChangeState(MOVE_STATE::WALK);
-	}
-
-	// 視覚
-	if (distance <= VIEW_RANGE * VIEW_RANGE)
-	{
-		// 自分から見たプレイヤーの角度を求める
-		float rad = atan2f(vec.z, vec.x);
-		float viewRad = rad - transform_.rot.y;
-		float viewDeg = static_cast<float>(Utility::DegIn360(Utility::Rad2DegF(viewRad)));
-
-		//// 視野角
-		//if (viewDeg <= VIEW_ANGLE || viewDeg >= (360.0f - VIEW_ANGLE))
-		//{
-		//	searching_ = true;
-		//}
-	}
-
-	// 移動後座標を計算する
-	// 移動量
-	VECTOR movePow;
-	movePow.x = direction.x * WALK_SPEED ;
-	movePow.z = direction.z * WALK_SPEED ;
-
-	// 移動処理(座標+移動量)
-	transform_.pos.x += (movePow.x);
-	transform_.pos.z += (movePow.z);
-	transform_.pos.y = 0.0f;
-
-	transform_.quaRot = Quaternion::LookRotation(direction);
-
+	
 }
 
 void NormalEnemy::UpdateAttack(void)
 {
+}
+
+//void NormalEnemy::Search(void)
+//{
+//	// 検知フラグリセット
+//	searching_ = false;
+//
+//	// プレイヤーの座標を取得
+//	VECTOR pPos = player_.lock()->GetPos();
+//
+//	// エネミーからプレイヤーまでのベクトル
+//	VECTOR diff = VSub(pPos, transform_.pos);
+//
+//	// XZ距離
+//	float distance = diff.x * diff.x + diff.z * diff.z;
+//
+//	VECTOR vec;
+//	vec = VSub(pPos, transform_.pos);
+//	VECTOR direction = VNorm(vec);
+//
+//	// 聴覚
+//	if (distance <= HEARING_RANGE * HEARING_RANGE)
+//	{
+//		searching_ = true;
+//		ChangeState(STATE::WALK);
+//	}
+//
+//	// 視覚
+//	if (distance <= VIEW_RANGE * VIEW_RANGE)
+//	{
+//
+//		// 自分から見たプレイヤーの角度を求める
+//		float rad = atan2f(vec.z, vec.x);
+//		float viewRad = rad - transform_.rot.y;
+//		float viewDeg = static_cast<float>(Utility::DegIn360(Utility::Rad2DegF(viewRad)));
+//
+//		// 視野角
+//		if (viewDeg <= VIEW_ANGLE || viewDeg >= (360.0f - VIEW_ANGLE))
+//		{
+//			searching_ = true;
+//		}
+//	}
+//
+//	// 移動後座標を計算する
+//	// 移動量
+//	VECTOR movePow;
+//	movePow.x = direction.x * WALK_SPEED ;
+//	movePow.z = direction.z * WALK_SPEED ;
+//
+//	// 移動処理(座標+移動量)
+//	transform_.pos.x += (movePow.x);
+//	transform_.pos.z += (movePow.z);
+//	transform_.pos.y = 0.0f;
+//
+//	transform_.quaRot = Quaternion::LookRotation(direction);
+//
+//}
+
+void NormalEnemy::UpdateMove(void)
+{
+	
 }
 
 void NormalEnemy::MakeDissolve(void)

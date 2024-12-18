@@ -4,9 +4,9 @@
 #include "Common/Transform.h"
 class ResourceManager;
 class Planet;
+class TestEnemy;
 class NormalEnemy;
 class Player;
-class Destroyer;
 
 class Stage
 {
@@ -54,7 +54,7 @@ private:
 	std::map<NAME, std::shared_ptr<Planet>> planets_;
 
 	// 敵オブジェクト
-	std::vector<std::shared_ptr<NormalEnemy>> normalEnemy_;
+	std::vector<std::shared_ptr<TestEnemy>> normalEnemy_;
 
 	// 空のPlanet
 	std::shared_ptr<Planet> nullPlanet = nullptr;

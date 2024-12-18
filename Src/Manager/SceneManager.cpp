@@ -153,7 +153,7 @@ void SceneManager::ChangeScene(SCENE_ID nextId)
 	waitSceneId_ = nextId;
 
 	// フェードアウト(暗転)を開始する
-	fader_->SetFade(Fader::MOVE_STATE::FADE_OUT);
+	fader_->SetFade(Fader::STATE::FADE_OUT);
 	isSceneChanging_ = true;
 
 }
@@ -234,26 +234,26 @@ void SceneManager::DoChangeScene(SCENE_ID sceneId)
 void SceneManager::Fade(void)
 {
 
-	Fader::MOVE_STATE fState = fader_->GetState();
+	Fader::STATE fState = fader_->GetState();
 	switch (fState)
 	{
-	case Fader::MOVE_STATE::FADE_IN:
+	case Fader::STATE::FADE_IN:
 		// 明転中
 		if (fader_->IsEnd())
 		{
 			// 明転が終了したら、フェード処理終了
-			fader_->SetFade(Fader::MOVE_STATE::NONE);
+			fader_->SetFade(Fader::STATE::NONE);
 			isSceneChanging_ = false;
 		}
 		break;
-	case Fader::MOVE_STATE::FADE_OUT:
+	case Fader::STATE::FADE_OUT:
 		// 暗転中
 		if (fader_->IsEnd())
 		{
 			// 完全に暗転してからシーン遷移
 			DoChangeScene(waitSceneId_);
 			// 暗転から明転へ
-			fader_->SetFade(Fader::MOVE_STATE::FADE_IN);
+			fader_->SetFade(Fader::STATE::FADE_IN);
 		}
 		break;
 	}

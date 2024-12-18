@@ -2,12 +2,13 @@
 class Collider
 {
 
-public :
+public:
 
 	// 衝突種別
 	enum class TYPE
 	{
 		STAGE,
+		WEAPON,
 	};
 
 	// コンストラクタ

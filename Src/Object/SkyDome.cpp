@@ -6,12 +6,12 @@
 
 SkyDome::SkyDome(const Transform& syncTransform) : syncTransform_(syncTransform)
 {
-	state_ = MOVE_STATE::NONE;
+	state_ = STATE::NONE;
 	
 	// èÛë‘ä«óù
-	stateChanges_.emplace(MOVE_STATE::NONE, std::bind(&SkyDome::ChangeStateNone, this));
-	stateChanges_.emplace(MOVE_STATE::STAY, std::bind(&SkyDome::ChangeStateStay, this));
-	stateChanges_.emplace(MOVE_STATE::FOLLOW, std::bind(&SkyDome::ChangeStateFollow, this));
+	stateChanges_.emplace(STATE::NONE, std::bind(&SkyDome::ChangeStateNone, this));
+	stateChanges_.emplace(STATE::STAY, std::bind(&SkyDome::ChangeStateStay, this));
+	stateChanges_.emplace(STATE::FOLLOW, std::bind(&SkyDome::ChangeStateFollow, this));
 }
 
 SkyDome::~SkyDome(void)
@@ -42,11 +42,11 @@ void SkyDome::Init(void)
 	auto sceneId = scnMng_.GetSceneID();
 	if(sceneId == SceneManager::SCENE_ID::TITLE)
 	{
-		ChangeState(MOVE_STATE::STAY);
+		ChangeState(STATE::STAY);
 	}
 	else
 	{
-		ChangeState(MOVE_STATE::FOLLOW);
+		ChangeState(STATE::FOLLOW);
 	}
 }
 
@@ -61,7 +61,7 @@ void SkyDome::Draw(void)
 	MV1DrawModel(transform_.modelId);
 }
 
-void SkyDome::ChangeState(MOVE_STATE state)
+void SkyDome::ChangeState(STATE state)
 {
 
 	// èÛë‘ïœçX

@@ -9,7 +9,7 @@ public:
 	static constexpr float SPEED_ALPHA = 5.0f;
 
 	// 状態
-	enum class MOVE_STATE
+	enum class STATE
 	{
 		NONE, 
 		FADE_OUT,	// 徐々に暗転
@@ -17,13 +17,13 @@ public:
 	};
 
 	// 状態の取得
-	MOVE_STATE GetState(void) const;
+	STATE GetState(void) const;
 
 	// フェード処理が終了しているか
 	bool IsEnd(void) const;
 
 	// 指定フェードを開始する
-	void SetFade(MOVE_STATE state);
+	void SetFade(STATE state);
 
 	void Init(void);
 	void Update(void);
@@ -32,7 +32,7 @@ public:
 private:
 
 	// 状態
-	MOVE_STATE state_;
+	STATE state_;
 
 	// 透明度
 	float alpha_;

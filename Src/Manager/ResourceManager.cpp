@@ -99,6 +99,12 @@ void ResourceManager::Init(void)
 	// à⁄ìÆån
 	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Enemy/NormalEnemyAnim/Idle.mv1");
 	resourcesMap_.emplace(SRC::NORMAL_ENEMY_IDLE, std::move(res));
+	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Enemy/NormalEnemyAnim/Walk.mv1");
+	resourcesMap_.emplace(SRC::NORMAL_ENEMY_WALK, std::move(res));
+	
+	// çUåÇån
+	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Enemy/NormalEnemyAnim/NormalAttack.mv1");
+	resourcesMap_.emplace(SRC::NORMAL_ENEMY_NORMALATTACK, std::move(res));
 
 
 #pragma endregion

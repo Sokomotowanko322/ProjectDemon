@@ -8,6 +8,8 @@
 class SceneBase;
 class Fader;
 class Camera;
+class Collision;
+class ColliderManager;
 
 class SceneManager
 {

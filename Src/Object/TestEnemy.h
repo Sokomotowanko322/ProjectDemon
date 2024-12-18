@@ -1,4 +1,8 @@
+#include <DxLib.h>
 #include <vector>
+#include <functional>
+#include <map>
+#include <string>
 #include <memory>
 #include "../Common/Quaternion.h"
 #include "EnemyBase.h"
@@ -10,14 +14,11 @@ class Capsule;
 class Camera;
 class Player;
 class Soul;
-class ModelMaterial;
-class ModelRenderer;
 
-class NormalEnemy : public EnemyBase
+class TestEnemy : public EnemyBase
 {
 public:
-
-	struct Data
+	/*struct Data
 	{
 		float dissolveHeight_;
 		float disMinY_;
@@ -26,7 +27,7 @@ public:
 		float clickedU;
 		float clickedV;
 		float dummy2[2];
-	};
+	};*/
 
 	enum class STATE
 	{
@@ -52,34 +53,33 @@ public:
 		"IDLE",
 		"WALK",
 		"RUN",
-		"ATTACK",
+		"NORMALATTACK",
 	};
 
 
-	// 配列用にレンダーターゲットをそれぞれ用意
-	enum SHADER_RT_TYPE
-	{
-		SECOND_RENDERTARGET,
-		OUTLINE,
-		FIRST_RENDERTARGET,
-		NORMAL,
-		BLUR,
-		SHRINK,
-		DEPTH,
-		MAX
-	};
+	//// 配列用にレンダーターゲットをそれぞれ用意
+	//enum SHADER_RT_TYPE
+	//{
+	//	SECOND_RENDERTARGET,
+	//	OUTLINE,
+	//	FIRST_RENDERTARGET,
+	//	NORMAL,
+	//	BLUR,
+	//	SHRINK,
+	//	DEPTH,
+	//	MAX
+	//};
 
 
 	// コンストラクタ
-	NormalEnemy(std::weak_ptr<Player> player);
+	TestEnemy(std::weak_ptr<Player> player);
 
 	// デストラクタ
-	~NormalEnemy(void);
+	~TestEnemy(void);
 
 	// 初期化
 	void Init(void) override;
 	void InitAnimation(void);
-	void InitDissolve(void);
 
 	// 更新
 	void Update(void) override;
@@ -87,15 +87,16 @@ public:
 	// 描画
 	void Draw(void) override;
 
-	// ディゾルブエフェクト作成
-	void MakeDissolve(void);
-
 	// 敵の位置を設定
 	void SetPos(VECTOR pos);
 
 	// 状態遷移
 	void ChangeState(STATE state);
-	
+
+	// 衝突判定に用いられるコライダ制御
+	void AddCollider(std::weak_ptr<Collider> collider);
+	void ClearCollider(void);
+
 private:
 
 	// アニメーション遷移用
@@ -121,34 +122,42 @@ private:
 	void UpdateWalk(void);
 	void UpdateAttack(void);
 
-	void UpdateMove(void);
+	void JudgeAct(void);
 
-	// モデル描画用用
-	std::unique_ptr<ModelMaterial> material_;
-	std::unique_ptr<ModelRenderer> renderer_;
+	void ApproachToPlayer(void);
+	//// モデル描画用用
+	//std::unique_ptr<ModelMaterial> material_;
+	//std::unique_ptr<ModelRenderer> renderer_;
 
 	// アニメーション制御用
 	std::unique_ptr<AnimationController> animationController_;
 
+	// コライダ
+	std::vector<std::weak_ptr<Collider>> colliders_;
+	
 	// カメラ情報の取得
 	std::unique_ptr<Camera> camera_;
 
-	// データ内情報取得用
-	Data* data_;
+	//// データ内情報取得用
+	//Data* data_;
 
-	// バッファ格納変数
-	int buff_;
+	//// バッファ格納変数
+	//int buff_;
 
-	// レンダーターゲット設定用変数
-	int renderTarget_[SHADER_RT_TYPE::MAX];
+	//// レンダーターゲット設定用変数
+	//int renderTarget_[SHADER_RT_TYPE::MAX];
 
-	// ディゾルブ時に呼び出すテクスチャ
-	int dissolveTex_;
+	//// ディゾルブ時に呼び出すテクスチャ
+	//int dissolveTex_;
 
-	// シェーダファイル格納
-	int pixelShader_;
-	int vertexShader_;
-	int postEffect_;
+	//// シェーダファイル格納
+	//int pixelShader_;
+	//int vertexShader_;
+	//int postEffect_;
+
+	bool isCatchPlayerPos_;
+	bool isEndMove_;
+	bool atkFlag_;
 
 	// デルタタイム
 	float deltaTime_;
@@ -159,7 +168,8 @@ private:
 	// 次の攻撃までのディレイ
 	float attackDelay_;
 	float cntDelay_;
-	
+
 	float sinTime_;
 	float offset_;
 };
+
