@@ -1,7 +1,8 @@
 #include <DxLib.h>
 
 class Player;
-class NormalEnemy;
+//class NormalEnemy;
+class TestEnemy;
 
 class Soul
 {
@@ -32,7 +33,8 @@ public:
 private:
 
 	// ポインタ
-	std::shared_ptr<NormalEnemy> normalEnemy_;
+	//std::shared_ptr<NormalEnemy> normalEnemy_;
+	std::shared_ptr<TestEnemy> normalEnemy_;
 	std::weak_ptr<Player> player_;
 
 	// 魂の位置

@@ -30,7 +30,7 @@ const char DATA_DISSOLVE[] = "Data/Image/Dissolve.png";
 const char IDLE[] = "IDLE";
 const char WALK[] = "WALK";
 const char NORMAL_ATTACK[] = "NORMALATTACK";
-const char PATH_TestEnemy[] = "Enemy/TestEnemyAnim";
+const char PATH_TEST_ENEMY[] = "Enemy/TestEnemyAnim";
 ;
 
 // 座標系
@@ -70,12 +70,12 @@ TestEnemy::~TestEnemy(void)
 void TestEnemy::Init(void)
 {
 	// モデルの基本設定
-	transform_.SetModel(ResourceManager::GetInstance().LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY));
-	transform_.scl = MODEL_SCALE;
-	transform_.quaRot = Quaternion::Euler({ Utility::Deg2RadF(0.0f),Utility::Deg2RadF(180.0f),Utility::Deg2RadF(0.0f) });
-	transform_.pos = DEFAULT_POS;
+	enmyTransform_.SetModel(ResourceManager::GetInstance().LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY));
+	enmyTransform_.scl = MODEL_SCALE;
+	enmyTransform_.quaRot = Quaternion::Euler({ Utility::Deg2RadF(0.0f),Utility::Deg2RadF(180.0f),Utility::Deg2RadF(0.0f) });
+	enmyTransform_.pos = DEFAULT_POS;
 	diff_ = Utility::VECTOR_ZERO;
-	transform_.Update();
+	enmyTransform_.Update();
 
 	deltaTime_ = SceneManager::GetInstance().GetDeltaTime();
 
@@ -93,8 +93,8 @@ void TestEnemy::Init(void)
 
 void TestEnemy::InitAnimation(void)
 {
-	std::string path = Application::PATH_MODEL + PATH_TestEnemy;
-	animationController_ = std::make_unique<AnimationController>(transform_.modelId);
+	std::string path = Application::PATH_MODEL + PATH_TEST_ENEMY;
+	animationController_ = std::make_unique<AnimationController>(enmyTransform_.modelId);
 
 	// 待機アニメーション
 	animationController_->Add(IDLE, path + "Idle.mv1",
@@ -107,7 +107,7 @@ void TestEnemy::InitAnimation(void)
 		0.0f, NORMAL_ANIM_SPEED, resMng_.LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY), true, 0, false);*/
 	
 	// 攻撃アニメーション
-	animationController_->Add("NORMALATTACK", path + "NormalAttack.mv1",
+	animationController_->Add(NORMAL_ATTACK, path + "NormalAttack.mv1",
 		0.0f, NORMAL_ANIM_SPEED, resMng_.LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY_NORMALATTACK), false, 0, false);
 }
 
@@ -117,7 +117,7 @@ void TestEnemy::Update(void)
 	JudgeAct();
 
 	// モデル制御更新
-	transform_.Update();
+	enmyTransform_.Update();
 
 	// 関数ポインタ更新
 	stateUpdate_();
@@ -130,7 +130,7 @@ void TestEnemy::Draw(void)
 {
 	float deltaTime_ = SceneManager::GetInstance().GetDeltaTime();
 
-	MV1DrawModel(transform_.modelId);
+	MV1DrawModel(enmyTransform_.modelId);
 	// 現在のSTATEを表示する
 	DrawFormatString(0, 90, GetColor(255, 255, 255), "Current STATE: %d", state_);
 
@@ -138,8 +138,8 @@ void TestEnemy::Draw(void)
 
 void TestEnemy::SetPos(VECTOR pos)
 {
-	transform_.pos = pos;
-	transform_.Update();
+	enmyTransform_.pos = pos;
+	enmyTransform_.Update();
 }
 
 void TestEnemy::ChangeState(STATE state)
@@ -182,18 +182,21 @@ void TestEnemy::UpdateIdle(void)
 	VECTOR pPos = player_.lock()->GetPos();
 
 	// エネミーからプレイヤーまでのベクトル
-	diff_ = VSub(pPos, transform_.pos);
+	diff_ = VSub(pPos, enmyTransform_.pos);
 	diff_ = VNorm(diff_);
-
+	
+	// 回転処理
+	VECTOR fixedDir = { -diff_.x, diff_.y, -diff_.z };
+	
 	// プレイヤーのベクトルと自分の前方向ベクトルとの差分(内積)
-	dot_ = VDot(diff_, transform_.GetForward());
+	dot_ = VDot(diff_, enmyTransform_.GetForward());
 	
 	// 球面補間を行う
-	transform_.quaRot.x = 0.0f;
-	transform_.quaRot.z = 0.0f;
+	enmyTransform_.quaRot.x = 0.0f;
+	enmyTransform_.quaRot.z = 0.0f;
 	rot_ = Quaternion::Slerp(
-		transform_.quaRot, Quaternion::LookRotation(diff_), rotationStep_ / DEVIDE_STEPCOUNT);
-	transform_.quaRot = rot_;
+		enmyTransform_.quaRot, Quaternion::LookRotation(fixedDir), rotationStep_ / DEVIDE_STEPCOUNT);
+	enmyTransform_.quaRot = rot_;
 	
 	// 差分が限りなく1に近かったらWALKしない
 	if (dot_ <= DOT_MIN)
@@ -225,8 +228,8 @@ void TestEnemy::UpdateWalk(void)
 void TestEnemy::UpdateAttack(void)
 {
 	atkFlag_ = true;
-	transform_.quaRot.x = 0.0f;
-	transform_.quaRot.z = 0.0f;
+	enmyTransform_.quaRot.x = 0.0f;
+	enmyTransform_.quaRot.z = 0.0f;
 	float stepAnim = animationController_->GetAnimData(NORMAL_ATTACK).stepAnim;
 	float totalBiteAnim = animationController_->GetAnimData(NORMAL_ATTACK).animTotalTime;
 	//if (stepAnim >= BITE_COLFRAME)
@@ -275,13 +278,13 @@ void TestEnemy::JudgeAct(void)
 	VECTOR pPos = player_.lock()->GetPos();
 
 	// エネミーからプレイヤーまでのベクトル
-	VECTOR diff = VSub(pPos, transform_.pos);
+	VECTOR diff = VSub(pPos, enmyTransform_.pos);
 
 	// XZ距離
 	float distance = diff.x * diff.x + diff.z * diff.z;
 
 	// 遠距離だったらこっちへ近づいてくる
-	if (distance >= FAR_RANGE * FAR_RANGE)
+	if (distance >= FAR_RANGE * FAR_RANGE && !atkFlag_)
 	{
 		ApproachToPlayer();
 	}
@@ -301,13 +304,13 @@ void TestEnemy::ApproachToPlayer(void)
 	VECTOR pPos = player_.lock()->GetPos();
 
 	// エネミーからプレイヤーまでのベクトル
-	VECTOR diff = VSub(pPos, transform_.pos);
+	VECTOR diff = VSub(pPos, enmyTransform_.pos);
 
 	// XZ距離
 	float distance = diff.x * diff.x + diff.z * diff.z;
 
 	VECTOR vec;
-	vec = VSub(pPos, transform_.pos);
+	vec = VSub(pPos, enmyTransform_.pos);
 	VECTOR direction = VNorm(vec);
 
 	// 聴覚
@@ -323,7 +326,7 @@ void TestEnemy::ApproachToPlayer(void)
 
 		// 自分から見たプレイヤーの角度を求める
 		float rad = atan2f(vec.z, vec.x);
-		float viewRad = rad - transform_.rot.y;
+		float viewRad = rad - enmyTransform_.rot.y;
 		float viewDeg = static_cast<float>(Utility::DegIn360(Utility::Rad2DegF(viewRad)));
 
 		// 視野角
@@ -339,18 +342,18 @@ void TestEnemy::ApproachToPlayer(void)
 	movePow.z = direction.z * WALK_SPEED;
 
 	// 移動処理(座標+移動量)
-	transform_.pos.x += (movePow.x);
-	transform_.pos.z += (movePow.z);
-	transform_.pos.y = 0.0f;
+	enmyTransform_.pos.x += (movePow.x);
+	enmyTransform_.pos.z += (movePow.z);
+	enmyTransform_.pos.y = 0.0f;
 	// 回転処理
 	VECTOR fixedDirection = { -direction.x, direction.y, -direction.z };
 	// 球面補間を行う
-	transform_.quaRot.x = 0.0f;
-	transform_.quaRot.z = 0.0f;
+	enmyTransform_.quaRot.x = 0.0f;
+	enmyTransform_.quaRot.z = 0.0f;
 	rot_ = Quaternion::Slerp(
-		transform_.quaRot, Quaternion::LookRotation(diff), rotationStep_ / DEVIDE_STEPCOUNT);
-	transform_.quaRot = rot_;
-	transform_.quaRot = Quaternion::LookRotation(fixedDirection);
+		enmyTransform_.quaRot, Quaternion::LookRotation(diff), rotationStep_ / DEVIDE_STEPCOUNT);
+	enmyTransform_.quaRot = rot_;
+	enmyTransform_.quaRot = Quaternion::LookRotation(fixedDirection);
 
 }
 

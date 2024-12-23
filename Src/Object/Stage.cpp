@@ -6,8 +6,8 @@
 #include "../Manager/ResourceManager.h"
 #include "Player.h"
 #include "Planet.h"
-#include "TestEnemy.h"
 #include "NormalEnemy.h"
+#include "TestEnemy.h"
 #include "Common/Collider.h"
 #include "Common/Transform.h"
 #include "Stage.h"
@@ -34,17 +34,17 @@ void Stage::Init(void)
 {
 	// メインとなるステージ生成
 	MakeMainStage();
-	
+
 	// その他環境
 	MakeEnvironment();
-	
+
 	step_ = -1.0f;
 
 }
 
 void Stage::Update(void)
 {
-	normalEnemy_.emplace_back(std::make_shared<TestEnemy>(player_));
+
 	//// 惑星
 	//for (const auto& s : planets_)
 	//{
@@ -52,10 +52,10 @@ void Stage::Update(void)
 	//}
 
 	// 骸骨オブジェクト
-	/*for (const auto& s : normalEnemy_)
+	for (const auto& s : normalEnemy_)
 	{
 		s->Update();
-	}*/
+	}
 
 }
 
@@ -68,11 +68,11 @@ void Stage::Draw(void)
 		s.second->Draw();
 	}
 
-	//// 骸骨オブジェクト
-	//for (const auto& s : skulls_)
-	//{
-	//	s->Draw();
-	//}
+	// 骸骨オブジェクト
+	for (const auto& s : normalEnemy_)
+	{
+		s->Draw();
+	}
 
 }
 
@@ -84,19 +84,16 @@ void Stage::ChangeStage(NAME type)
 	// 対象のステージを取得する
 	activePlanet_ = GetPlanet(activeName_);
 
-	// ステージの当たり判定をプレイヤーとエネミーに設定
+	// ステージの当たり判定をプレイヤーに設定
 	player_->ClearCollider();
 	player_->AddCollider(activePlanet_.lock()->GetTransform().collider);
-	//normalEnemy_->ClearCollider();
-	//normalEnemy_->AddCollider(activePlanet_.lock()->GetTransform().collider);
+	
+	for(auto e : normalEnemy_)
+	{
+		e->ClearCollider();
+		e->AddCollider(activePlanet_.lock()->GetEnemyTransform().collider);
+	}
 
-	//for (const auto& enemy : normalEnemy_)
-	//{
-	//	if (!enemy) continue; // nullptr チェック
-
-	//	enemy->ClearCollider();
-	//	enemy->AddCollider(activePlanet_.lock()->GetTransform().collider);
-	//}
 	step_ = TIME_STAGE_CHANGE;
 
 }
@@ -119,12 +116,17 @@ void Stage::MakeMainStage(void)
 	Transform planetTrans;
 	planetTrans.SetModel(
 		resMng_.LoadModelDuplicate(ResourceManager::SRC::STAGE));
-	planetTrans.scl = {250.0,200.0,250.0};
+	Transform enemy;
+	enemy.SetModel(
+		resMng_.LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY));
+
+	planetTrans.scl = { 250.0,200.0,250.0 };
 	planetTrans.quaRot = Quaternion();
 	planetTrans.pos = { 0.0f, -400.0f, 0.0f };
 
 	// 当たり判定(コライダ)作成
 	planetTrans.MakeCollider(Collider::TYPE::STAGE);
+	enemy.MakeCollider(Collider::TYPE::STAGE);
 
 	planetTrans.Update();
 
@@ -141,17 +143,17 @@ void Stage::MakeMainStage(void)
 void Stage::MakeEnvironment(void)
 {
 
-	auto normalEnemy = std::make_shared<NormalEnemy>(player_);
+	auto normalEnemy = std::make_shared<TestEnemy>(player_);
 	normalEnemy->Init();
 	normalEnemy->SetPos({ -300.0f, -30.0f, 500.0f });
 	normalEnemy_.emplace_back(std::move(normalEnemy));
 
-	normalEnemy = std::make_shared<NormalEnemy>(player_);
+	normalEnemy = std::make_shared<TestEnemy>(player_);
 	normalEnemy->Init();
 	normalEnemy->SetPos({ 250.0f, -60.0f, 900.0f });
 	normalEnemy_.emplace_back(std::move(normalEnemy));
 
-	normalEnemy = std::make_shared<NormalEnemy>(player_);
+	normalEnemy = std::make_shared<TestEnemy>(player_);
 	normalEnemy->Init();
 	normalEnemy->SetPos({ -20.0f, -45.0f, 1600.0f });
 	normalEnemy_.emplace_back(std::move(normalEnemy));

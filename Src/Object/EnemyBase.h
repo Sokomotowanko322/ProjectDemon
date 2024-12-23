@@ -19,7 +19,7 @@ public:
 	virtual void Update(void) = 0;
 	virtual void Draw(void) = 0;
 
-	const Transform& GetTransform(void) const;
+	const Transform& GetEnemyTransform(void) const;
 	virtual VECTOR GetPos(void) const;
 
 private:
@@ -37,7 +37,7 @@ protected:
 	std::unique_ptr<AnimationController> animationController_;
 
 	// ƒ‚ƒfƒ‹§Œä‚ÌŠî–{î•ñ
-	Transform transform_;
+	Transform enmyTransform_;
 
 	// ‰ñ“]‚Ì·•ª
 	VECTOR diff_;

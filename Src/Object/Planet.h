@@ -1,11 +1,12 @@
 #pragma once
 #include "../Common/Quaternion.h"
 #include "ActorBase.h"
+#include "EnemyBase.h"
 #include "Stage.h"
 class ModelMaterial;
 class ModelRenderer;
 
-class Planet : public ActorBase
+class Planet : public ActorBase , public EnemyBase
 {
 
 public:

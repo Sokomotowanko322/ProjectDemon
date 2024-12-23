@@ -75,7 +75,7 @@ void GameScene::Update(void)
 	player_->Update();
 	soul_->Update();
 	//normalEnemy_->Update();
-	testEnemy_->Update();
+	//testEnemy_->Update();
 	
 }
 
@@ -84,7 +84,7 @@ void GameScene::Draw(void)
 	// ”wŒi
 	skyDome_->Draw();
 	//normalEnemy_->Draw();
-	testEnemy_->Draw();
+	//testEnemy_->Draw();
 	
 	soul_->Draw();
 	stage_->Draw();

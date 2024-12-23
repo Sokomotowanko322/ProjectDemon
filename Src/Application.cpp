@@ -3,6 +3,7 @@
 #include "Manager/InputManager.h"
 #include "Manager/ResourceManager.h"
 #include "Manager/SceneManager.h"
+#include "Common/FpsControl.h"
 #include "Application.h"
 
 Application* Application::instance_ = nullptr;
@@ -57,7 +58,9 @@ void Application::Init(void)
 
 	// シーン管理初期化
 	SceneManager::CreateInstance();
-
+	
+	//fps制御
+	FpsControl::CreateInstance();
 }
 
 void Application::Run(void)
@@ -65,10 +68,13 @@ void Application::Run(void)
 
 	auto& inputManager = InputManager::GetInstance();
 	auto& sceneManager = SceneManager::GetInstance();
+	auto& fps = FpsControl::GetInstance();
 
 	// ゲームループ
 	while (ProcessMessage() == 0 && CheckHitKey(KEY_INPUT_ESCAPE) == 0)
 	{
+		fps.Update();	//更新
+		fps.Draw();		//描画
 
 		inputManager.Update();
 		sceneManager.Update();
@@ -76,7 +82,7 @@ void Application::Run(void)
 		sceneManager.Draw();
 
 		ScreenFlip();
-
+		fps.Wait();		//待機
 	}
 
 }

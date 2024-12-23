@@ -45,7 +45,7 @@ private:
 
 	// プレイヤー
 	std::shared_ptr<Player> player_;
-	
+
 	// ステージアクティブになっている惑星の情報
 	NAME activeName_;
 	std::weak_ptr<Planet> activePlanet_;

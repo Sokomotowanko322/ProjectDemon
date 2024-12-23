@@ -5,6 +5,7 @@
 #include "../Manager/Resource.h"
 #include "Common/Transform.h"
 #include "Player.h"
+#include "TestEnemy.h"
 #include "NormalEnemy.h"
 #include "Soul.h"
 
@@ -22,7 +23,7 @@ Soul::Soul(std::weak_ptr<Player> player)
 	player_ = player;
 
 	// “G‚ÌÀ•Wî•ñ‚ğ‚Æ‚é‚½‚ß¶¬
-	normalEnemy_ = std::make_shared<NormalEnemy>(player_);
+	normalEnemy_ = std::make_shared<TestEnemy>(player_);
 
 	// •‚—V‘¬“x‚È‚Ç‚Ì‰Šú‰»
 	soulMoveCnt_ = 0.0f;

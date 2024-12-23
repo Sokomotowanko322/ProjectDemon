@@ -13,12 +13,12 @@ EnemyBase::~EnemyBase(void)
 {
 }
 
-const Transform& EnemyBase::GetTransform(void) const
+const Transform& EnemyBase::GetEnemyTransform(void) const
 {
-	return transform_;
+	return enmyTransform_;
 }
 
 VECTOR EnemyBase::GetPos(void) const
 {
-	return transform_.pos;
+	return enmyTransform_.pos;
 }
