@@ -4,7 +4,10 @@
 #include "../Common/Fader.h"
 #include "../Scene/TitleScene.h"
 #include "../Scene/GameScene.h"
+#include "../Scene/ResultScene.h"
 #include "Camera.h"
+#include "../Object/Common/Collider/Collision.h"
+#include "../Object/Common/Collider/ColliderManager.h"
 #include "ResourceManager.h"
 #include "SceneManager.h"
 
@@ -27,7 +30,7 @@ SceneManager& SceneManager::GetInstance(void)
 void SceneManager::Init(void)
 {
 
-	sceneId_ = SCENE_ID::TITLE;
+	sceneId_ = SCENE_ID::TITLE_LOGO;
 	waitSceneId_ = SCENE_ID::NONE;
 
 	fader_ = std::make_unique<Fader>();
@@ -39,6 +42,10 @@ void SceneManager::Init(void)
 
 	isSceneChanging_ = false;
 
+	// コライダの生成
+	colMng_ = std::make_unique<ColliderManager>();
+	collision_ = std::make_unique<Collision>();
+
 	// デルタタイム
 	preTime_ = std::chrono::system_clock::now();
 
@@ -46,7 +53,7 @@ void SceneManager::Init(void)
 	Init3D();
 
 	// 初期シーンの設定
-	DoChangeScene(SCENE_ID::GAME);
+	DoChangeScene(SCENE_ID::TITLE_LOGO);
 
 }
 
@@ -84,6 +91,7 @@ void SceneManager::Update(void)
 
 	if (scene_ == nullptr)
 	{
+		colMng_->DelCollider();
 		return;
 	}
 
@@ -126,9 +134,6 @@ void SceneManager::Draw(void)
 
 	// 描画
 	scene_->Draw();
-
-	// 主にポストエフェクト用
-	camera_->Draw();
 
 	// Effekseerにより再生中のエフェクトを描画する。
 	DrawEffekseer3D();
@@ -215,11 +220,14 @@ void SceneManager::DoChangeScene(SCENE_ID sceneId)
 
 	switch (sceneId_)
 	{
-	case SCENE_ID::TITLE:
+	case SCENE_ID::TITLE_LOGO:
 		scene_ = std::make_unique<TitleScene>();
 		break;
 	case SCENE_ID::GAME:
 		scene_ = std::make_unique<GameScene>();
+		break;
+	case SCENE_ID::RESULT:
+		scene_ = std::make_unique<ResultScene>();
 		break;
 	}
 

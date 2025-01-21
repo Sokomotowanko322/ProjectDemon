@@ -6,22 +6,22 @@
 #include "../Manager/ResourceManager.h"
 #include "../Manager/InputManager.h"
 #include "../Manager/Camera.h"
-#include "../Object/Common/AnimationController.h"
-#include "../Object/SkyDome.h"
 #include "TitleScene.h"
 
-TitleScene::TitleScene(void)
+TitleScene::TitleScene(void) :
+	resMng_(ResourceManager::GetInstance())
 {
 }
 
 TitleScene::~TitleScene(void)
 {
+	DeleteGraph(titleLogo_);
 }
 
 void TitleScene::Init(void)
 {
 	// íËì_ÉJÉÅÉâ
-	mainCamera.ChangeMode(Camera::MODE::FIXED_POINT);
+	titleLogo_ = resMng_.Load(ResourceManager::SRC::TITLE_LOGO).handleId_;
 }
 
 void TitleScene::Update(void)
@@ -38,4 +38,7 @@ void TitleScene::Update(void)
 
 void TitleScene::Draw(void)
 {
+	// ÉçÉSÇ»Ç«ÇÃï`âÊ
+	DrawRotaGraph(Application::SCREEN_SIZE_HALF_X, 230, 3.0, 0.0f, titleLogo_, true);
+
 }

@@ -1,4 +1,7 @@
 #pragma once
+class SceneManager;
+class Camera;
+class Collision;
 class ResourceManager;
 
 class SceneBase
@@ -22,6 +25,12 @@ public:
 	virtual void Draw(void) = 0;
 
 protected:
+
+	//カメラ
+	Camera& camera_;
+
+	//衝突判定
+	Collision& collision_;
 
 	// リソース管理
 	ResourceManager& resMng_;

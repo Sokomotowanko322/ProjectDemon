@@ -21,5 +21,8 @@ public:
 	void Draw(void) override;
 
 private:
+	// シングルトン参照
+	ResourceManager& resMng_;
 
+	int titleLogo_;
 };

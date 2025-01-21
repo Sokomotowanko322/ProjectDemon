@@ -178,12 +178,12 @@ NormalEnemy::~NormalEnemy(void)
 void NormalEnemy::Init(void)
 {
 	// モデルの基本設定
-	enmyTransform_.SetModel(ResourceManager::GetInstance().LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY));
-	enmyTransform_.scl = MODEL_SCALE;
-	enmyTransform_.quaRot = Quaternion();
-	enmyTransform_.pos = DEFAULT_POS;
+	enemyTransform_.SetModel(ResourceManager::GetInstance().LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY));
+	enemyTransform_.scl = MODEL_SCALE;
+	enemyTransform_.quaRot = Quaternion();
+	enemyTransform_.pos = DEFAULT_POS;
 
-	enmyTransform_.Update();
+	enemyTransform_.Update();
 
 	deltaTime_ = SceneManager::GetInstance().GetDeltaTime();
 
@@ -205,7 +205,7 @@ void NormalEnemy::Init(void)
 void NormalEnemy::InitAnimation(void)
 {
 	std::string path = Application::PATH_MODEL + PATH_NORMALENEMY;
-	animationController_ = std::make_unique<AnimationController>(enmyTransform_.modelId);
+	animationController_ = std::make_unique<AnimationController>(enemyTransform_.modelId);
 
 	// 待機アニメーション
 	animationController_->Add(IDLE, path + "Idle.mv1",
@@ -243,14 +243,14 @@ void NormalEnemy::InitDissolve(void)
 	data_->dissolveHeight_ = 1.0f;
 
 	// モデルのメッシュ取得
-	auto meshNum = MV1GetMeshNum(enmyTransform_.modelId);
+	auto meshNum = MV1GetMeshNum(enemyTransform_.modelId);
 	VECTOR maxPos = Utility::VECTOR_ZERO;
 	VECTOR minPos = { 0,-100,0 };
 	for (int i = 0; i < meshNum; ++i)
 	{
-		MV1SetMeshBackCulling(enmyTransform_.modelId, i, DX_CULLING_NONE);
-		VECTOR modelMaxPos = MV1GetMeshMaxPosition(enmyTransform_.modelId, i);
-		VECTOR modelMinPos = MV1GetMeshMinPosition(enmyTransform_.modelId, i);
+		MV1SetMeshBackCulling(enemyTransform_.modelId, i, DX_CULLING_NONE);
+		VECTOR modelMaxPos = MV1GetMeshMaxPosition(enemyTransform_.modelId, i);
+		VECTOR modelMinPos = MV1GetMeshMinPosition(enemyTransform_.modelId, i);
 
 		minPos.x = (std::min)(minPos.x, modelMinPos.x);
 		minPos.y = (std::min)(minPos.y, modelMinPos.y);
@@ -268,7 +268,7 @@ void NormalEnemy::Update(void)
 {
 	
 	// モデル制御更新
-	enmyTransform_.Update();
+	enemyTransform_.Update();
 
 	// 関数ポインタ更新
 	stateUpdate_();
@@ -293,7 +293,7 @@ void NormalEnemy::Draw(void)
 {
 	float deltaTime_ = SceneManager::GetInstance().GetDeltaTime();
 	
-	MV1DrawModel(enmyTransform_.modelId);
+	MV1DrawModel(enemyTransform_.modelId);
 	// 現在のSTATEを表示する
 	DrawFormatString(0, 90, GetColor(255, 255, 255), "Current STATE: %d", state_);
 
@@ -301,8 +301,8 @@ void NormalEnemy::Draw(void)
 
 void NormalEnemy::SetPos(VECTOR pos)
 {
-	enmyTransform_.pos = pos;
-	enmyTransform_.Update();
+	enemyTransform_.pos = pos;
+	enemyTransform_.Update();
 }
 
 void NormalEnemy::ChangeState(STATE state)
@@ -345,18 +345,18 @@ void NormalEnemy::UpdateIdle(void)
 	VECTOR pPos = player_.lock()->GetPos();
 
 	// エネミーからプレイヤーまでのベクトル
-	diff_ = VSub(pPos, enmyTransform_.pos);
+	diff_ = VSub(pPos, enemyTransform_.pos);
 	diff_ = VNorm(diff_);
 
 	//プレイヤーのベクトルと自分の前方向ベクトルとの差分(内積)
-	dot_ = VDot(diff_, enmyTransform_.GetForward());
+	dot_ = VDot(diff_, enemyTransform_.GetForward());
 
 	// 球面補間を行う
-	enmyTransform_.quaRot.x = 0.0f;
-	enmyTransform_.quaRot.z = 0.0f;
+	enemyTransform_.quaRot.x = 0.0f;
+	enemyTransform_.quaRot.z = 0.0f;
 	quaRot_ = Quaternion::Slerp(
-		enmyTransform_.quaRot, Quaternion::LookRotation(diff_), rotationStep_ / DEVIDE_STEPCOUNT);
-	enmyTransform_.quaRot = quaRot_;
+		enemyTransform_.quaRot, Quaternion::LookRotation(diff_), rotationStep_ / DEVIDE_STEPCOUNT);
+	enemyTransform_.quaRot = quaRot_;
 
 	// 差分が限りなく1に近かったらWALKしない
 	if (dot_ <= DOT_MIN)

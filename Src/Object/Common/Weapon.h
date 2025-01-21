@@ -36,6 +36,7 @@ public:
 	const int GetIsEffect(void) const;
 
 	const VECTOR GetTopPos(void) const;
+	const VECTOR GetPos(void) const;
 
 	void SetEffect(int effect);
 
@@ -44,6 +45,8 @@ public:
 	void SetIsHit(bool ishit);
 
 protected:
+
+	Transform weaponTransform_;
 
 	VECTOR pos_;
 

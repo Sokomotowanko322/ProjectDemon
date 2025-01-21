@@ -4,14 +4,17 @@
 #include <map>
 #include <functional>
 #include <DxLib.h>
+#include "../Object/Common/Collider/Collision.h"
 #include "ActorBase.h"
 
 class AnimationController;
+class ColliderController;
 class Collider;
 class Capsule;
 class ModelMaterial;
 class ModelRenderer;
 class Soul;
+class TestEnemy;
 class Weapon;
 
 class Player : public ActorBase
@@ -25,6 +28,7 @@ public:
 		NONE,
 		PLAY,
 		INHALE,
+		HIT,
 		WARP_RESERVE,
 		WARP_MOVE,
 		DEAD,
@@ -79,21 +83,25 @@ public:
 	void Update(void) override;
 	void Draw(void) override;
 
+	// 攻撃しているか
+	bool IsAttack(void);
+
 	// 衝突判定に用いられるコライダ制御
-	void AddCollider(std::weak_ptr<Collider> collider);
-	void MakeCollider(void);
+	void AddCollider(void);
+	void SetCollider(void);
 	void ClearCollider(void);
+
+	// ヒット時エフェクト
+	void HitEffect(VECTOR pos);
 
 	// 衝突用カプセルの取得
 	const Capsule& GetCapsule(void) const;
 	
-	// 武器の取得
-	const Transform& GetWeapon(void) const;
-	const Transform& GetHipsTransform(void) const;
+	// ゲッター
+	const ANIM_TYPE GetNowAnim(void) const;
 	VECTOR& GetLeftHandPos(void);
 	VECTOR& GetPos(void);
-	const ANIM_TYPE GetNowAnim(void) const;
-
+	
 private:
 
 	// アニメーション
@@ -104,6 +112,10 @@ private:
 
 	// 武器
 	std::shared_ptr<Weapon> weapon_;
+	
+	// 敵
+	std::shared_ptr<TestEnemy> enemy_;
+	//std::vector<std::vector<float>> enemyAllPositions_;
 
 	// 魂
 	std::shared_ptr<Soul> soul_;
@@ -113,9 +125,15 @@ private:
 	int effectInhaleResId_;
 	int effectInhalePlayId_;
 	
+	// ヒット時エフェクト
+	int hitEfResId_;
+	int hitEfPlayId_;
+	float effectHitScale_;
+	
 	// 武器の追従位置
 	int rightHandBoneIndex_;
 	int leftHandBoneFrame_;
+	
 	// カメラの追従位置
 	int hipsBoneIndex_;
 
@@ -140,6 +158,7 @@ private:
 	// モデル描画用用
 	std::unique_ptr<ModelMaterial> material_;
 	std::unique_ptr<ModelRenderer> renderer_;
+
 	// 移動方向
 	VECTOR moveDir_;
 
@@ -154,7 +173,17 @@ private:
 
 	// 移動スピード
 	float moveSpeed_;
+	float speedBuffRate_;
+	;
+	bool hitGround_;
+
 	
+	//足元衝突している地面ポリゴンの法線
+	VECTOR hitNormal_;
+
+	//足元衝突している地面ポリゴンの位置
+	VECTOR hitPos_;
+
 	// 回転
 	Quaternion playerRotY_;
 	Quaternion goalQuaRot_;
@@ -172,11 +201,19 @@ private:
 	// 攻撃判定
 	bool canMove_;
 	bool isAttack_;
-	bool atkCol_;
-	bool hasCol_;
+	bool onCol_;
+	bool firstComboTriggered_;
+	bool secondComboTriggered_;
+	bool thirdComboTriggered_;
+
+	// 攻撃倍率
+	float atkRate_;			
 
 	// アニメーション制御
 	bool stopAnim_;
+
+	// ステージとの衝突
+	bool isCollisionStage_;
 
 	// 入力受付時間
 	float stepJump_;
@@ -184,7 +221,10 @@ private:
 	int comboStep_;
 
 	// 衝突判定に用いられるコライダ
-	std::vector<std::weak_ptr<Collider>> colliders_;
+	std::vector<std::weak_ptr<Collider>> collider_;
+	std::unique_ptr<ColliderController> colliderController_;
+	std::unique_ptr<ColliderController> playerFootCollsion_;
+
 	std::unique_ptr<Capsule> capsule_;
 
 	// 衝突チェック
@@ -196,6 +236,9 @@ private:
 
 	// トゥーンマップ
 	int imgToonMap_;
+
+	//重力
+	float gravity_;
 
 	// アニメーション制御
 	void InitAnimation(void);
@@ -230,6 +273,7 @@ private:
 	// 攻撃
 	void ProcessAttack(void);
 	void ResetCombo(void);
+	void OnColliderFrame(void);
 
 	// 吸収エフェクト
 	void SyncInhaleEffect(void);
@@ -244,8 +288,9 @@ private:
 
 	// 衝突判定
 	void Collision(void);
-	void CollisionGravity(void);
+	void SimpleGravity(void);
 	void CollisionCapsule(void);
+	void TestCollisionCapsule(void);
 
 	// 移動量の計算
 	void CalcGravityPow(void);

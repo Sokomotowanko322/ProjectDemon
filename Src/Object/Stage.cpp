@@ -5,157 +5,87 @@
 #include "../Manager/SceneManager.h"
 #include "../Manager/ResourceManager.h"
 #include "Player.h"
-#include "Planet.h"
 #include "NormalEnemy.h"
 #include "TestEnemy.h"
-#include "Common/Collider.h"
+#include "../Object/Common/Collider/Collider.h"
+#include "../Object/Common/Collider/ColliderController.h"
+#include "../Object/Common/Collider/ColliderManager.h"
 #include "Common/Transform.h"
 #include "Stage.h"
+
+static constexpr VECTOR MODEL_SCALE = { 200.0f,200.0f,200.0f };
 
 Stage::Stage(std::weak_ptr<Player> player)
 	:
 	resMng_(ResourceManager::GetInstance()),
+	scnMng_(SceneManager::GetInstance()),
+	collision_(SceneManager::GetInstance().GetCollision()),
 	player_(player)
 {
-	activeName_ = NAME::STAGE;
-	step_ = 0.0f;
+	auto& myCol = scnMng_.GetCollision();
 }
 
 Stage::~Stage(void)
 {
-	// 惑星
-	planets_.clear();
-
-	// 骸骨オブジェクト
-	normalEnemy_.clear();
+	
 }
 
 void Stage::Init(void)
 {
-	// メインとなるステージ生成
-	MakeMainStage();
-
-	// その他環境
-	MakeEnvironment();
-
-	step_ = -1.0f;
-
+	// モデルの基本設定(コライダに使うため)
+	stageTransform_.SetModel(resMng_.LoadModelDuplicate(
+		ResourceManager::SRC::STAGE));
+	stageTransform_.scl = MODEL_SCALE;
+	stageTransform_.pos = { 0.0f, -400.0f, 0.0f };
+	stageTransform_.quaRot = Quaternion();
+	stageTransform_.quaRotLocal =
+		Quaternion::Euler({ 0.0f, Utility::Deg2RadF(0.0f), 0.0f });
+	
+	stageTransform_.Update();
+	
+	colliderTransform_.SetModel(resMng_.LoadModelDuplicate(
+		ResourceManager::SRC::STAGE_COLLIDER));
+	colliderTransform_.scl = MODEL_SCALE;
+	colliderTransform_.pos = { -530.0f, -400.0f, 590.0f };
+	colliderTransform_.quaRot = Quaternion();
+	colliderTransform_.quaRotLocal =
+		Quaternion::Euler({ 0.0f, Utility::Deg2RadF(0.0f), 0.0f });
+	
+	colliderTransform_.Update();
 }
 
 void Stage::Update(void)
 {
+	// モデル情報更新
+	stageTransform_.Update();
+	colliderTransform_.Update();
 
-	//// 惑星
-	//for (const auto& s : planets_)
-	//{
-	//	s.second->Update();
-	//}
-
-	// 骸骨オブジェクト
-	for (const auto& s : normalEnemy_)
-	{
-		s->Update();
-	}
+	// ステージモデルに対するコライダの設定
+	scnMng_.GetColManager().AddCollider(
+		OBJECT_TYPE::STAGE,
+		COL_TYPE::MODEL,
+		stageTransform_,
+		true
+	);
 
 }
 
 void Stage::Draw(void)
 {
-
-	// 惑星
-	for (const auto& s : planets_)
-	{
-		s.second->Draw();
-	}
-
-	// 骸骨オブジェクト
-	for (const auto& s : normalEnemy_)
-	{
-		s->Draw();
-	}
-
+	MV1DrawModel(stageTransform_.modelId);
+	//MV1DrawModel(colliderTransform_.modelId);
+	scnMng_.GetColManager().DrawCollider(OBJECT_TYPE::PLAYER);
+	//scnMng_.GetColManager().DrawCollider(OBJECT_TYPE::ENEMY_MODEL);
+	scnMng_.GetColManager().DrawCollider(OBJECT_TYPE::WEAPON);
+	scnMng_.GetColManager().DrawCollider(OBJECT_TYPE::PLAYER_FOOT);
 }
 
-void Stage::ChangeStage(NAME type)
+int Stage::GetModelId(void)
 {
-
-	activeName_ = type;
-
-	// 対象のステージを取得する
-	activePlanet_ = GetPlanet(activeName_);
-
-	// ステージの当たり判定をプレイヤーに設定
-	player_->ClearCollider();
-	player_->AddCollider(activePlanet_.lock()->GetTransform().collider);
-	
-	for(auto e : normalEnemy_)
-	{
-		e->ClearCollider();
-		e->AddCollider(activePlanet_.lock()->GetEnemyTransform().collider);
-	}
-
-	step_ = TIME_STAGE_CHANGE;
-
+	return stageTransform_.modelId;
 }
 
-std::weak_ptr<Planet> Stage::GetPlanet(NAME type)
+void Stage::SetCollisionStage(void)
 {
-	if (planets_.count(type) == 0)
-	{
-		return nullPlanet;
-	}
-
-	return planets_[type];
-}
-
-void Stage::MakeMainStage(void)
-{
-
-	// 最初の惑星
-	//------------------------------------------------------------------------------
-	Transform planetTrans;
-	planetTrans.SetModel(
-		resMng_.LoadModelDuplicate(ResourceManager::SRC::STAGE));
-	Transform enemy;
-	enemy.SetModel(
-		resMng_.LoadModelDuplicate(ResourceManager::SRC::NORMAL_ENEMY));
-
-	planetTrans.scl = { 250.0,200.0,250.0 };
-	planetTrans.quaRot = Quaternion();
-	planetTrans.pos = { 0.0f, -400.0f, 0.0f };
-
-	// 当たり判定(コライダ)作成
-	planetTrans.MakeCollider(Collider::TYPE::STAGE);
-	enemy.MakeCollider(Collider::TYPE::STAGE);
-
-	planetTrans.Update();
-
-	NAME name = NAME::STAGE;
-	std::shared_ptr<Planet> planet =
-		std::make_shared<Planet>(
-			name, Planet::TYPE::GROUND, planetTrans);
-	planet->Init();
-	planets_.emplace(name, std::move(planet));
-	//------------------------------------------------------------------------------
-
-}
-
-void Stage::MakeEnvironment(void)
-{
-
-	auto normalEnemy = std::make_shared<TestEnemy>(player_);
-	normalEnemy->Init();
-	normalEnemy->SetPos({ -300.0f, -30.0f, 500.0f });
-	normalEnemy_.emplace_back(std::move(normalEnemy));
-
-	normalEnemy = std::make_shared<TestEnemy>(player_);
-	normalEnemy->Init();
-	normalEnemy->SetPos({ 250.0f, -60.0f, 900.0f });
-	normalEnemy_.emplace_back(std::move(normalEnemy));
-
-	normalEnemy = std::make_shared<TestEnemy>(player_);
-	normalEnemy->Init();
-	normalEnemy->SetPos({ -20.0f, -45.0f, 1600.0f });
-	normalEnemy_.emplace_back(std::move(normalEnemy));
 
 }

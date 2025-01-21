@@ -13,6 +13,7 @@ class Collider;
 class Capsule;
 class Camera;
 class Player;
+class Weapon;
 class Soul;
 
 class TestEnemy : public EnemyBase
@@ -33,8 +34,8 @@ public:
 	{
 		IDLE,
 		WALK,
-		RUN,
-		ATTACK
+		ATTACK,
+		DEATH
 	};
 
 	// アニメーション種別
@@ -42,8 +43,8 @@ public:
 	{
 		IDLE,
 		WALK,
-		RUN,
 		ATTACK,
+		DEATH,
 		ALL
 	};
 
@@ -52,8 +53,8 @@ public:
 	{
 		"IDLE",
 		"WALK",
-		"RUN",
 		"NORMALATTACK",
+		"DEATH",
 	};
 
 
@@ -93,12 +94,22 @@ public:
 	// 状態遷移
 	void ChangeState(STATE state);
 
+	// ダメージ処理
+	void SetDamage(int damage);
+
 	// 衝突判定に用いられるコライダ制御
 	void AddCollider(std::weak_ptr<Collider> collider);
 	void ClearCollider(void);
-
+	bool CheckCollision(const VECTOR& p1, float r1, const VECTOR& p2, float r2);
+	void ResolveCollision(VECTOR& p1, float r1, VECTOR& p2, float r2);
+	bool isAlive_;
 private:
 
+	// コリジョンコントローラー
+	std::unique_ptr<ColliderController> colliderController_;
+
+	std::shared_ptr<Weapon> weapon_;
+	 
 	// アニメーション遷移用
 	STATE state_;
 	STATE preState_;
@@ -115,12 +126,16 @@ private:
 	void ChangeIdle(void);
 	void ChangeWalk(void);
 	void ChangeAttack(void);
+	void ChangeDeath(void);
 
 	// 更新
 	std::function<void(void)> stateUpdate_;
 	void UpdateIdle(void);
 	void UpdateWalk(void);
 	void UpdateAttack(void);
+	void UpdateDeath(void);
+
+	void AddCollider(void);
 
 	void JudgeAct(void);
 
@@ -133,7 +148,7 @@ private:
 	std::unique_ptr<AnimationController> animationController_;
 
 	// コライダ
-	std::vector<std::weak_ptr<Collider>> colliders_;
+	std::weak_ptr<Collider> collider_;
 	
 	// カメラ情報の取得
 	std::unique_ptr<Camera> camera_;
@@ -155,9 +170,12 @@ private:
 	//int vertexShader_;
 	//int postEffect_;
 
+	int hp_;
+
 	bool isCatchPlayerPos_;
 	bool isEndMove_;
 	bool atkFlag_;
+	
 
 	// デルタタイム
 	float deltaTime_;

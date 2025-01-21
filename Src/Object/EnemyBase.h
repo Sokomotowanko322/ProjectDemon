@@ -32,12 +32,13 @@ protected:
 	// シングルトン参照
 	ResourceManager& resMng_;
 	SceneManager& scnMng_;
+	ColliderManager& colMng_;
 
 	// アニメーション制御
 	std::unique_ptr<AnimationController> animationController_;
 
 	// モデル制御の基本情報
-	Transform enmyTransform_;
+	Transform enemyTransform_;
 
 	// 回転の差分
 	VECTOR diff_;
@@ -47,6 +48,8 @@ protected:
 	// クォータニオン回転値代入用
 	Quaternion rot_;
 
+	// 生存フラグ
+	bool isAlive_;
 
 	// 回転の内積
 	float dot_;

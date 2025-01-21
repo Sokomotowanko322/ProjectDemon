@@ -39,15 +39,15 @@ Weapon::Weapon(void)
 	colortimeCnt_{ 0 }
 {
 	// 武器モデル設定
-	transform_.SetModel(resMng_.LoadModelDuplicate(
+	weaponTransform_.SetModel(resMng_.LoadModelDuplicate(
 		ResourceManager::SRC::PLAYER_WEAPON));
 
-	transform_.scl = MODEL_SCALE;
-	transform_.pos = Utility::VECTOR_ZERO;
-	transform_.localPos = handLPos_;
-	transform_.quaRotLocal = handLocalquarot_;
-	transform_.quaRot = {};
-	transform_.Update();
+	weaponTransform_.scl = MODEL_SCALE;
+	weaponTransform_.pos = Utility::VECTOR_ZERO;
+	weaponTransform_.localPos = handLPos_;
+	weaponTransform_.quaRotLocal = handLocalquarot_;
+	weaponTransform_.quaRot = {};
+	weaponTransform_.Update();
 	
 	StopEffekseer3DEffect(effectLightPlayId_);
 	StopEffekseer3DEffect(effectLinePlayId_);
@@ -64,7 +64,7 @@ Weapon::~Weapon(void)
 
 void Weapon::Init(void)
 {
-
+	weaponTransform_.Update();
 }
 
 void Weapon::Update(void)
@@ -73,6 +73,7 @@ void Weapon::Update(void)
 
 void Weapon::WeaponUpdate(Transform follow, bool isAtkcol, bool isDrawed)
 {
+
 	// インスタンス生成
 	auto& ins = InputManager::GetInstance();
 
@@ -88,8 +89,8 @@ void Weapon::WeaponUpdate(Transform follow, bool isAtkcol, bool isDrawed)
 	
 	// 武器の位置同期	
 	mat = MV1GetFrameLocalWorldMatrix(follow.modelId, handAttatchFrame_);
-	transform_.localPos = handLPos_;
-	transform_.quaRotLocal = handLocalquarot_;
+	weaponTransform_.localPos = handLPos_;
+	weaponTransform_.quaRotLocal = handLocalquarot_;
 	auto rot = MGetRotElem(mat);
 	effectPos_ = MGetTranslateElem(mat);
 
@@ -98,14 +99,20 @@ void Weapon::WeaponUpdate(Transform follow, bool isAtkcol, bool isDrawed)
 	Quaternion followRot = qua;
 
 	// 剣の位置
-	VECTOR swordPos = followRot.PosAxis(transform_.localPos);
+	VECTOR swordPos = followRot.PosAxis(weaponTransform_.localPos);
 	swordTopPos_ = followRot.PosAxis(SwordLength_);
 	swordTopPos_ = VAdd(effectPos_, swordTopPos_);
-	transform_.pos = VAdd(effectPos_, swordPos);
+	weaponTransform_.pos = VAdd(effectPos_, swordPos);
 
 	// 回転
-	transform_.quaRot = qua;
+	weaponTransform_.quaRot = qua;
+
+	transform_.pos = weaponTransform_.pos;
+
+
+	// 更新
 	transform_.Update();
+	weaponTransform_.Update();
 
 	// EF
 	PlayEffect();
@@ -122,10 +129,9 @@ void Weapon::WeaponUpdate(Transform follow, bool isAtkcol, bool isDrawed)
 
 void Weapon::Draw(void)
 {
-	MV1DrawModel(transform_.modelId);
-	DrawFormatString(0, 60, GetColor(255, 255, 255), "weaponPosition: (%0.2f,%0.2f,%0.2f)", transform_.pos.x, transform_.pos.y, transform_.pos.z);// 頂点：カメラ座標
-
-
+	MV1DrawModel(weaponTransform_.modelId);
+	DrawFormatString(0, 60, GetColor(255, 255, 255),
+		"weaponPosition: (%0.2f,%0.2f,%0.2f)", weaponTransform_.pos.x, weaponTransform_.pos.y, weaponTransform_.pos.z);// 頂点：カメラ座標
 }
 
 void Weapon::DrawDebug(void)
@@ -140,6 +146,11 @@ const int Weapon::GetIsEffect(void) const
 const VECTOR Weapon::GetTopPos(void) const
 {
 	return swordTopPos_;
+}
+
+const VECTOR Weapon::GetPos(void) const
+{
+	return weaponTransform_.pos;
 }
 
 void Weapon::SetEffect(int effect)

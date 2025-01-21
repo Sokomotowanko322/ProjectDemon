@@ -1,6 +1,8 @@
 #pragma once
 #include <memory>
 #include <chrono>
+#include <unordered_map>
+#include <functional>
 
 // 推奨しませんが、どうしても使いたい方は
 #define mainCamera SceneManager::GetInstance().GetCamera()
@@ -20,8 +22,9 @@ public:
 	enum class SCENE_ID
 	{
 		NONE,
-		TITLE,
-		GAME
+		TITLE_LOGO,
+		GAME,
+		RESULT
 	};
 	
 	// インスタンスの生成
@@ -29,6 +32,24 @@ public:
 
 	// インスタンスの取得
 	static SceneManager& GetInstance(void);
+
+	// <summary>
+	/// 衝突判定登録情報の取得
+	/// </summary>
+	/// <returns>ColliderManagerの参照</returns>
+	inline ColliderManager& GetColManager(void) const
+	{
+		return *colMng_;
+	}
+
+	/// <summary>
+	/// 衝突判定の取得
+	/// </summary>
+	/// <returns>Collisionの参照</returns>
+	inline Collision& GetCollision(void) const
+	{
+		return *collision_;
+	}
 
 	void Init(void);
 	void Init3D(void);
@@ -60,6 +81,12 @@ private:
 
 	// 各種シーン
 	std::unique_ptr<SceneBase> scene_;
+
+	// 衝突判定の登録
+	std::unique_ptr<ColliderManager> colMng_;
+
+	//衝突判定を行うクラス
+	std::unique_ptr<Collision> collision_;
 
 	// フェード
 	std::unique_ptr<Fader> fader_;

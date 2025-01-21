@@ -40,7 +40,7 @@ void SkyDome::Init(void)
 
 	// ó‘Ô‘JˆÚ
 	auto sceneId = scnMng_.GetSceneID();
-	if(sceneId == SceneManager::SCENE_ID::TITLE)
+	if(sceneId == SceneManager::SCENE_ID::TITLE_LOGO)
 	{
 		ChangeState(STATE::STAY);
 	}

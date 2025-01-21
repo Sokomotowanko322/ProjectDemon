@@ -38,6 +38,8 @@ Soul::Soul(std::weak_ptr<Player> player)
 
 Soul::~Soul(void)
 {
+	StopEffect();
+	DeleteEffekseerEffect(effectSoulResId_[SOUL_TYPE::BLUE]);
 }
 
 void Soul::Init(void)
@@ -53,7 +55,6 @@ void Soul::Update(void)
 {
 	playerPos_ = player_.lock()->GetLeftHandPos();
 	SetScalePlayingEffekseer3DEffect(effectSoulPlayId_[SOUL_TYPE::BLUE], SOUL_SCALE.x, SOUL_SCALE.y, SOUL_SCALE.z);	
-	
 	
 	if (player_.lock()->GetNowAnim() == Player::ANIM_TYPE::INHALE)
 	{
@@ -94,6 +95,7 @@ void Soul::UpdateInhale(void)
 	// ‰ñ“]‚ğŒvZ
 	Quaternion rotation = Quaternion::LookRotation(direction);
 
+	// ³‹K‰»
 	direction = VNorm(direction);
 
 	// ‹——£‚Ì“ñæ‚ğŒvZ

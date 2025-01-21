@@ -2,10 +2,10 @@
 #include <memory>
 #include <map>
 #include "Common/Transform.h"
+
 class ResourceManager;
-class Planet;
-class TestEnemy;
-class NormalEnemy;
+class Collision;
+class ColliderController;
 class Player;
 
 class Stage
@@ -32,39 +32,29 @@ public:
 	void Update(void);
 	void Draw(void);
 
-	// ステージ変更
-	void ChangeStage(NAME type);
-
-	// 対象ステージを取得
-	std::weak_ptr<Planet> GetPlanet(NAME type);
+	// コライダを設定するmodelIdの取得
+	int GetModelId(void);
 
 private:
 
+	Transform stageTransform_;
+	Transform colliderTransform_;
+
 	// シングルトン参照
 	ResourceManager& resMng_;
+	Collision& collision_;
+	SceneManager& scnMng_;
 
 	// プレイヤー
 	std::shared_ptr<Player> player_;
 
-	// ステージアクティブになっている惑星の情報
-	NAME activeName_;
-	std::weak_ptr<Planet> activePlanet_;
-
-	// 惑星
-	std::map<NAME, std::shared_ptr<Planet>> planets_;
-
-	// 敵オブジェクト
-	std::vector<std::shared_ptr<TestEnemy>> normalEnemy_;
-
-	// 空のPlanet
-	std::shared_ptr<Planet> nullPlanet = nullptr;
-
-	float step_;
-
-	// 最初の惑星
-	void MakeMainStage(void);
+	//衝突判定検知
+	std::unique_ptr<ColliderController> colliderController_;
 
 	// 環境オブジェクト
 	void MakeEnvironment(void);
+
+	// 衝突判定
+	void SetCollisionStage(void);
 
 };

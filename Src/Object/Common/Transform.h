@@ -2,7 +2,8 @@
 #include <memory>
 #include <DxLib.h>
 #include "../../Common/Quaternion.h"
-#include "Collider.h"
+//#include "Collider/Collider.h"
+#include "Collider/Collider.h"
 
 /// <summary>
 /// モデル制御の基本情報
@@ -15,9 +16,13 @@ class Transform
 
 public:
 
+	static constexpr float DEBUG_DIR_LEN = 300.0f;
+
+
+
 	// コンストラクタ
 	Transform(void);
-	Transform(int model);
+	explicit Transform(int model);
 
 	// デストラクタ
 	~Transform(void);
@@ -43,17 +48,16 @@ public:
 	// ローカル回転
 	Quaternion quaRotLocal;
 
-	// コライダ
-	std::shared_ptr<Collider> collider;
-
 	/// <summary>
 	/// モデル制御の基本情報更新
 	/// </summary>
 	/// <param name=""></param>
 	void Update(void);
 
+	//モデルの向き描画
+	void DrawDirection(float len = DEBUG_DIR_LEN);
+
 	void SetModel(int modelHId);
-	void MakeCollider(Collider::TYPE type);
 
 	// 前方方向を取得
 	VECTOR GetForward(void) const;

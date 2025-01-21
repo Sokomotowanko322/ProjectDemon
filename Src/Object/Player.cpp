@@ -10,14 +10,22 @@
 #include "../Renderer/ModelRenderer.h"
 #include "Common/AnimationController.h"
 #include "Common/Capsule.h"
-#include "Common/Collider.h"
+#include "../Object/Common/Collider/ColliderManager.h"
+#include "../Object/Common/Collider/Collider.h"
+#include "../Object/Common/Collider/ColliderController.h"
 #include "Common/Weapon.h"
+#include "TestEnemy.h"
 #include "Soul.h"
-#include "Planet.h"
 #include "Player.h"
 
 // 追従対象からエフェクトまでの相対座標(完全追従)
 const VECTOR LOCAL_POS = { 0.0f, -5.0f,0.0f };
+const VECTOR PLAYER_CAPSULE_TOP = { 0.0f, 250.0f,0.0f };
+const VECTOR PLAYER_CAPSULE_BOTTOM = { 0.0f, 90.0f,0.0f };
+const VECTOR PLAYER_FOOT_TOP = { 0.0f, 0.0f,0.0f };
+const VECTOR PLAYER_FOOT_BOTTOM = { 0.0f, -2.0f,0.0f };
+const VECTOR PLAYER_WEAPON_TOP = { 0.0f, 300.0f,0.0f };
+const VECTOR PLAYER_WEAPON_BOTTOM = { 0.0f, 40.0f,0.0f };
 
 // キーの登録
 const char FRAME_LEFTHAND[] = "mixamorig:LeftHandMiddle1";
@@ -26,9 +34,17 @@ const char FRAME_LEFTHAND[] = "mixamorig:LeftHandMiddle1";
 const float NORMAL_ANIM_SPEED = 60.0f;
 const float FAST_ANIM_SPEED = 75.0f;
 
+// 重力量
+const float GRAVITY_POW = 10.0f;
+
+// 武器のコライダ
+const float WEAPON_CAPSULE_RADIUS = 10.0f;
+
 // スピード
 static constexpr float SPEED_MOVE = 6.0f;
 static constexpr float SPEED_RUN = 6.0f;
+static constexpr float PLAYER_CAPSULE_RADIUS = 50.0f;
+//static constexpr float SPEED_RUN = 6.0f;
 
 // 回転完了までの時間
 static constexpr float TIME_ROT = 1.0f;
@@ -39,21 +55,32 @@ static constexpr float POW_JUMP = 35.0f;
 // ジャンプ受付時間
 static constexpr float TIME_JUMP_IN = 0.5f;
 
+const int DEFAULT_ZERO = 0;
+
 // コントローラー制御
 const float	STICK_VALUE_MAX = 1000.0f;
+
 const float	REVERSE_VALUE = -1.0f;
 const float	TIMEROT_NORMAL = 0.5f;
 const float	TIMEROT_FAST = 0.1f;
 const float INPUT_RECEPTION_TIME = 1.0f;
 
 // アニメーションの遷移フレーム
+const float FIRSTCOL_FRAME = 36.0f;
+const float SECONDCOL_FRAME = 18.0f;
+const float THIRDCOL_FRAME = 60.0f;
+const float THIRDCOL_SECONDSTEP_FRAME = 96.0f;
 const float FIRSTCOMBO_STEP = 62.0f;
 const float SECONDCOMBO_STEP = 56.0f;
 const float THIRDCOMBO_STEP = 170.0f;
 const float INHALE_STOPSTEP = 20.0f;
 const float INHALE_STARTSTEP = 30.0f;
 
-Player::Player(void)
+Player::Player(void) :
+	colliderController_(std::make_unique<ColliderController>()),
+	playerFootCollsion_(std::make_unique<ColliderController>()),
+	isCollisionStage_(false),
+	hitNormal_({})
 {
 	animationController_ = nullptr;
 	state_ = STATE::PLAY;
@@ -61,6 +88,10 @@ Player::Player(void)
 	// 手に持つ武器
 	weapon_ = std::make_shared<Weapon>();
 	weapon_->Init();
+	
+	// 衝突判定のセット
+	colliderController_->SetCollision(OBJECT_TYPE::PLAYER);
+	playerFootCollsion_->SetCollision(OBJECT_TYPE::PLAYER_FOOT);
 
 	// 移動座標系
 	moveSpeed_ = 0.0f;
@@ -82,6 +113,7 @@ Player::Player(void)
 	isJump_ = false;
 	isInhale_ = false;
 	stopAnim_ = false;
+	onCol_ = false;
 
 	// 衝突チェック
 	gravHitPosDown_ = Utility::VECTOR_ZERO;
@@ -90,6 +122,9 @@ Player::Player(void)
 	imgShadow_ = -1;
 
 	capsule_ = nullptr;
+
+	speedBuffRate_ = 0.0f;
+
 
 	// 状態管理
 	stateChanges_.emplace(STATE::NONE, std::bind(&Player::ChangeStateNone, this));
@@ -129,6 +164,15 @@ void Player::Init(void)
 	capsule_->SetLocalPosDown({ 0.0f, 30.0f, 0.0f });
 	capsule_->SetRadius(20.0f);
 
+	isCollisionStage_ = false;
+	firstComboTriggered_ = false;
+	secondComboTriggered_ = false;
+	thirdComboTriggered_ = false;
+	AddCollider();
+
+	// 重力
+	gravity_ = GRAVITY_POW;
+
 	// 丸影画像
 	imgShadow_ = resMng_.Load(ResourceManager::SRC::PLAYER_SHADOW).handleId_;
 
@@ -165,11 +209,13 @@ void Player::Init(void)
 		{ worldLightDirection.x, worldLightDirection.y, worldLightDirection.z, 0.0f });
 
 	renderer_ = std::make_unique<ModelRenderer>(transform_.modelId, *material_);
+
+	hitEfResId_ = ResourceManager::GetInstance().Load(ResourceManager::SRC::EFFECT_HIT).handleId_;
 	
 	effectInhaleResId_ = ResourceManager::GetInstance().Load(ResourceManager::SRC::EFFECT_INHALE).handleId_;
 
 	stepRotTime_ = TIMEROT_NORMAL;
-
+	effectHitScale_ = 50.0f;
 	// 初期状態
 	ChangeAnim(ANIM_TYPE::IDLE);
 	ChangeState(STATE::PLAY);
@@ -216,29 +262,60 @@ void Player::Draw(void)
 	DrawShadow();
 }
 
-void Player::AddCollider(std::weak_ptr<Collider> collider)
+bool Player::IsAttack(void)
 {
-	colliders_.push_back(collider);
+	return onCol_;
+}
+
+void Player::AddCollider(void)
+{
+	//プレイヤー
+	colMng_.AddCollider(
+		OBJECT_TYPE::PLAYER,
+		COL_TYPE::CAPSULE,
+		transform_,
+		true,
+		0, 0,
+		ENEMY_SUBTYPE::NONE,
+		PLAYER_CAPSULE_RADIUS,
+		PLAYER_CAPSULE_TOP,
+		PLAYER_CAPSULE_BOTTOM
+	);
+
+	colMng_.AddCollider(
+		OBJECT_TYPE::PLAYER_FOOT,
+		COL_TYPE::LINE,
+		transform_,
+		true,
+		0, 0,
+		ENEMY_SUBTYPE::NONE, 0.0f,
+		PLAYER_FOOT_TOP,
+		PLAYER_FOOT_BOTTOM
+	);
+
+	//武器
+	colMng_.AddCollider(
+		OBJECT_TYPE::WEAPON, COL_TYPE::CAPSULE,
+		weapon_->GetTransform(),
+		true,
+		0, 0,
+		ENEMY_SUBTYPE::NONE, WEAPON_CAPSULE_RADIUS,
+		PLAYER_WEAPON_TOP, PLAYER_WEAPON_BOTTOM);
+
+}
+
+void Player::SetCollider(void)
+{
 }
 
 void Player::ClearCollider(void)
 {
-	colliders_.clear();
+	collider_.clear();
 }
 
 const Capsule& Player::GetCapsule(void) const
 {
 	return *capsule_;
-}
-
-const Transform& Player::GetWeapon(void) const
-{
-	return weapon_->GetTransform();
-}
-
-const Transform& Player::GetHipsTransform(void) const
-{
-	return hipsBoneIndex_;
 }
 
 VECTOR& Player::GetLeftHandPos(void)
@@ -303,6 +380,8 @@ void Player::ChangeAnim(ANIM_TYPE state)
 		animationKey_ = ANIM_DATA_KEY[(int)state];
 
 		animationController_->ChangeAnimation(animationKey_);
+
+		canMove_ = true;
 	}
 }
 
@@ -374,6 +453,9 @@ void Player::UpdatePlay(void)
 	movePow_ = Utility::VECTOR_ZERO;
 	moveDir_ = Utility::VECTOR_ZERO;
 	
+	// 衝突判定フレーム
+	OnColliderFrame();
+	
 	if (!isAttack_ && canMove_)
 	{
 		// 移動処理
@@ -400,9 +482,17 @@ void Player::UpdatePlay(void)
 
 	// 衝突判定
 	Collision();
-
+	
 	// 回転させる
 	transform_.quaRot = playerRotY_;
+}
+
+void Player::HitEffect(VECTOR pos)
+{
+	hitEfPlayId_ = PlayEffekseer3DEffect(hitEfResId_);
+
+	SetPosPlayingEffekseer3DEffect(hitEfPlayId_, pos.x, pos.y, pos.z);
+	SetScalePlayingEffekseer3DEffect(hitEfPlayId_, effectHitScale_, effectHitScale_, effectHitScale_);
 }
 
 void Player::UpdateInhale(void)
@@ -430,68 +520,68 @@ void Player::DrawShadow(void)
 	// テクスチャアドレスモードを CLAMP にする( テクスチャの端より先は端のドットが延々続く )
 	SetTextureAddressMode(DX_TEXADDRESS_CLAMP);
 
-	// 影を落とすモデルの数だけ繰り返し
-	for (const auto c : colliders_)
-	{
-		// チェックするモデルは、jが0の時はステージモデル、1以上の場合はコリジョンモデル
-		ModelHandle = c.lock()->modelId_;
+	//// 影を落とすモデルの数だけ繰り返し
+	//for (const auto c : collider_)
+	//{
+	//	// チェックするモデルは、jが0の時はステージモデル、1以上の場合はコリジョンモデル
+	//	ModelHandle = c.lock()->modelId_;
 
-		// プレイヤーの直下に存在する地面のポリゴンを取得
-		HitResDim = MV1CollCheck_Capsule(
-			ModelHandle, -1,
-			transform_.pos, VAdd(transform_.pos, { 0.0f, -PLAYER_SHADOW_HEIGHT, 0.0f }), PLAYER_SHADOW_SIZE);
+	//	// プレイヤーの直下に存在する地面のポリゴンを取得
+	//	HitResDim = MV1CollCheck_Capsule(
+	//		ModelHandle, -1,
+	//		transform_.pos, VAdd(transform_.pos, { 0.0f, -PLAYER_SHADOW_HEIGHT, 0.0f }), PLAYER_SHADOW_SIZE);
 
-		// 頂点データで変化が無い部分をセット
-		Vertex[0].dif = GetColorU8(255, 255, 255, 255);
-		Vertex[0].spc = GetColorU8(0, 0, 0, 0);
-		Vertex[0].su = 0.0f;
-		Vertex[0].sv = 0.0f;
-		Vertex[1] = Vertex[0];
-		Vertex[2] = Vertex[0];
+	//	// 頂点データで変化が無い部分をセット
+	//	Vertex[0].dif = GetColorU8(255, 255, 255, 255);
+	//	Vertex[0].spc = GetColorU8(0, 0, 0, 0);
+	//	Vertex[0].su = 0.0f;
+	//	Vertex[0].sv = 0.0f;
+	//	Vertex[1] = Vertex[0];
+	//	Vertex[2] = Vertex[0];
 
-		// 球の直下に存在するポリゴンの数だけ繰り返し
-		HitRes = HitResDim.Dim;
-		for (i = 0; i < HitResDim.HitNum; i++, HitRes++)
-		{
-			// ポリゴンの座標は地面ポリゴンの座標
-			Vertex[0].pos = HitRes->Position[0];
-			Vertex[1].pos = HitRes->Position[1];
-			Vertex[2].pos = HitRes->Position[2];
+	//	// 球の直下に存在するポリゴンの数だけ繰り返し
+	//	HitRes = HitResDim.Dim;
+	//	for (i = 0; i < HitResDim.HitNum; i++, HitRes++)
+	//	{
+	//		// ポリゴンの座標は地面ポリゴンの座標
+	//		Vertex[0].pos = HitRes->Position[0];
+	//		Vertex[1].pos = HitRes->Position[1];
+	//		Vertex[2].pos = HitRes->Position[2];
 
-			// ちょっと持ち上げて重ならないようにする
-			SlideVec = VScale(HitRes->Normal, 0.5f);
-			Vertex[0].pos = VAdd(Vertex[0].pos, SlideVec);
-			Vertex[1].pos = VAdd(Vertex[1].pos, SlideVec);
-			Vertex[2].pos = VAdd(Vertex[2].pos, SlideVec);
+	//		// ちょっと持ち上げて重ならないようにする
+	//		SlideVec = VScale(HitRes->Normal, 0.5f);
+	//		Vertex[0].pos = VAdd(Vertex[0].pos, SlideVec);
+	//		Vertex[1].pos = VAdd(Vertex[1].pos, SlideVec);
+	//		Vertex[2].pos = VAdd(Vertex[2].pos, SlideVec);
 
-			// ポリゴンの不透明度を設定する
-			Vertex[0].dif.a = 0;
-			Vertex[1].dif.a = 0;
-			Vertex[2].dif.a = 0;
-			if (HitRes->Position[0].y > transform_.pos.y - PLAYER_SHADOW_HEIGHT)
-				Vertex[0].dif.a = static_cast<int>(roundf(128.0f * (1.0f - fabs(HitRes->Position[0].y - transform_.pos.y) / PLAYER_SHADOW_HEIGHT)));
+	//		// ポリゴンの不透明度を設定する
+	//		Vertex[0].dif.a = 0;
+	//		Vertex[1].dif.a = 0;
+	//		Vertex[2].dif.a = 0;
+	//		if (HitRes->Position[0].y > transform_.pos.y - PLAYER_SHADOW_HEIGHT)
+	//			Vertex[0].dif.a = static_cast<int>(roundf(128.0f * (1.0f - fabs(HitRes->Position[0].y - transform_.pos.y) / PLAYER_SHADOW_HEIGHT)));
 
-			if (HitRes->Position[1].y > transform_.pos.y - PLAYER_SHADOW_HEIGHT)
-				Vertex[1].dif.a = static_cast<int>(roundf(128.0f * (1.0f - fabs(HitRes->Position[1].y - transform_.pos.y) / PLAYER_SHADOW_HEIGHT)));
+	//		if (HitRes->Position[1].y > transform_.pos.y - PLAYER_SHADOW_HEIGHT)
+	//			Vertex[1].dif.a = static_cast<int>(roundf(128.0f * (1.0f - fabs(HitRes->Position[1].y - transform_.pos.y) / PLAYER_SHADOW_HEIGHT)));
 
-			if (HitRes->Position[2].y > transform_.pos.y - PLAYER_SHADOW_HEIGHT)
-				Vertex[2].dif.a = static_cast<int>(roundf(128.0f * (1.0f - fabs(HitRes->Position[2].y - transform_.pos.y) / PLAYER_SHADOW_HEIGHT)));
+	//		if (HitRes->Position[2].y > transform_.pos.y - PLAYER_SHADOW_HEIGHT)
+	//			Vertex[2].dif.a = static_cast<int>(roundf(128.0f * (1.0f - fabs(HitRes->Position[2].y - transform_.pos.y) / PLAYER_SHADOW_HEIGHT)));
 
-			// ＵＶ値は地面ポリゴンとプレイヤーの相対座標から割り出す
-			Vertex[0].u = (HitRes->Position[0].x - transform_.pos.x) / (PLAYER_SHADOW_SIZE * 2.0f) + 0.5f;
-			Vertex[0].v = (HitRes->Position[0].z - transform_.pos.z) / (PLAYER_SHADOW_SIZE * 2.0f) + 0.5f;
-			Vertex[1].u = (HitRes->Position[1].x - transform_.pos.x) / (PLAYER_SHADOW_SIZE * 2.0f) + 0.5f;
-			Vertex[1].v = (HitRes->Position[1].z - transform_.pos.z) / (PLAYER_SHADOW_SIZE * 2.0f) + 0.5f;
-			Vertex[2].u = (HitRes->Position[2].x - transform_.pos.x) / (PLAYER_SHADOW_SIZE * 2.0f) + 0.5f;
-			Vertex[2].v = (HitRes->Position[2].z - transform_.pos.z) / (PLAYER_SHADOW_SIZE * 2.0f) + 0.5f;
+	//		// ＵＶ値は地面ポリゴンとプレイヤーの相対座標から割り出す
+	//		Vertex[0].u = (HitRes->Position[0].x - transform_.pos.x) / (PLAYER_SHADOW_SIZE * 2.0f) + 0.5f;
+	//		Vertex[0].v = (HitRes->Position[0].z - transform_.pos.z) / (PLAYER_SHADOW_SIZE * 2.0f) + 0.5f;
+	//		Vertex[1].u = (HitRes->Position[1].x - transform_.pos.x) / (PLAYER_SHADOW_SIZE * 2.0f) + 0.5f;
+	//		Vertex[1].v = (HitRes->Position[1].z - transform_.pos.z) / (PLAYER_SHADOW_SIZE * 2.0f) + 0.5f;
+	//		Vertex[2].u = (HitRes->Position[2].x - transform_.pos.x) / (PLAYER_SHADOW_SIZE * 2.0f) + 0.5f;
+	//		Vertex[2].v = (HitRes->Position[2].z - transform_.pos.z) / (PLAYER_SHADOW_SIZE * 2.0f) + 0.5f;
 
-			// 影ポリゴンを描画
-			DrawPolygon3D(Vertex, 1, imgShadow_, TRUE);
-		}
+	//		// 影ポリゴンを描画
+	//		DrawPolygon3D(Vertex, 1, imgShadow_, TRUE);
+	//	}
 
-		// 検出した地面ポリゴン情報の後始末
-		MV1CollResultPolyDimTerminate(HitResDim);
-	}
+	//	// 検出した地面ポリゴン情報の後始末
+	//	MV1CollResultPolyDimTerminate(HitResDim);
+	//}
 
 	// ライティングを有効にする
 	SetUseLighting(TRUE);
@@ -528,7 +618,7 @@ void Player::ProcessMove(void)
 
 void Player::ProcessInhale(void)
 {
-	//// 位置の同期
+	// 位置の同期
 	SyncInhaleEffect();
 
 	auto& ins = InputManager::GetInstance();
@@ -646,8 +736,8 @@ void Player::MoveControll(void)
 void Player::ProcessAttack(void)
 {
 	auto& ins = InputManager::GetInstance();
-	float deltaTime_ = SceneManager::GetInstance().GetDeltaTime();
-
+	float deltaTime_ = 1.0;
+	
 	// コンボタイマーを減らす
 	if (comboInputTime_ >= 0.0f)
 	{
@@ -657,37 +747,45 @@ void Player::ProcessAttack(void)
 	{
 		// 攻撃リセット
 		comboStep_ = 0;
+		isAttack_ = false;
 	}
-	if (isAttack_)
-	{
-		canMove_ = false;
-	}
-	else
-	{
-		canMove_ = true;
-	}
+
 	// 攻撃ボタンが押された場合
 	if (ins.IsTriggered(InputManager::ACTION::ATTACK) && !isAttack_)
 	{
 		// 最初の攻撃
 		ChangeAnim(ANIM_TYPE::COMBO_ONE);
+		comboInputTime_ = INPUT_RECEPTION_TIME;
+		comboStep_ = 1;
 		isAttack_ = true;
 	}
-	else if (comboStep_ == COMBOCOUNT::FIRSTSTEP && comboInputTime_ >= 0.0f
-		&& ins.IsTriggered(InputManager::ACTION::ATTACK))
+	else if (comboStep_ == 1 && comboInputTime_ >= 0.0f
+		&& ins.IsTriggered(InputManager::ACTION::ATTACK) && animationController_->IsEndPlayAnimation())
 	{
 		// 二段目攻撃
 		ChangeAnim(ANIM_TYPE::COMBO_TWO);
+		comboInputTime_ = INPUT_RECEPTION_TIME;
+		comboStep_ = 2;
 		isAttack_ = true;
 	}
-	else if (comboStep_ == COMBOCOUNT::SECONDSTEP && comboInputTime_ >= 0.0f
-		&& ins.IsTriggered(InputManager::ACTION::ATTACK))
+ 	else if (comboStep_ == 2 && comboInputTime_ >= 0.0f
+		&& ins.IsTriggered(InputManager::ACTION::ATTACK) && animationController_->IsEndPlayAnimation())
 	{
 		// 三段目攻撃
 		ChangeAnim(ANIM_TYPE::COMBO_THREE);
+		comboStep_ = 3;
+		comboInputTime_ = INPUT_RECEPTION_TIME;
 		isAttack_ = true;
 	}
+	else if (comboStep_ == 3 && comboInputTime_ >= 0.0f
+		&& !ins.IsTriggered(InputManager::ACTION::ATTACK))
+	{
+		isAttack_ = false;
+	}
+	
+	// コンボ段階を下げる
 	ResetCombo();
+	
 	if (animType_ == ANIM_TYPE::COMBO_ONE||
 		animType_ == ANIM_TYPE::COMBO_TWO||
 		animType_ == ANIM_TYPE::COMBO_THREE)
@@ -702,29 +800,49 @@ void Player::ResetCombo(void)
 	float firstComboStep = animationController_->GetAnimData("COMBO_ONE").stepAnim;
 	float secondComboStep = animationController_->GetAnimData("COMBO_TWO").stepAnim;
 	float thirdComboStep = animationController_->GetAnimData("COMBO_THREE").stepAnim;
-	
-	if (firstComboStep >= FIRSTCOMBO_STEP || 
-		secondComboStep >= SECONDCOMBO_STEP || 
-		thirdComboStep >= THIRDCOMBO_STEP)
-	{
-		// IDLE状態へ遷移
-		isAttack_ = false;
-		// ボタンの入力受付時間をリセット
-		comboInputTime_ = INPUT_RECEPTION_TIME;
-	}
+	float firstComboTotalStep = animationController_->GetAnimData("COMBO_ONE").animTotalTime;
+	float secondComboTotalStep = animationController_->GetAnimData("COMBO_TWO").animTotalTime;
+	float thirdComboTotalStep = animationController_->GetAnimData("COMBO_THREE").animTotalTime;
 
-	// 特定のフレームで攻撃の段階を一つずつ上げる
-	if (firstComboStep >= FIRSTCOMBO_STEP)
+	// 判定をリセット
+	comboStep_ = COMBOCOUNT::NONE;
+
+	// 入力受付時間のリセットと少し延ばす
+	comboInputTime_ = INPUT_RECEPTION_TIME;
+
+	// 判定範囲拡大のための値
+	const float judgeComboFrame = 2.0f;
+
+	// 特定のフレーム範囲内で判定されていない場合
+	if (!firstComboTriggered_ && firstComboStep >= 
+		FIRSTCOMBO_STEP - judgeComboFrame && firstComboStep <= FIRSTCOMBO_STEP + judgeComboFrame)
 	{
 		comboStep_ = COMBOCOUNT::FIRSTSTEP;
+		firstComboTriggered_ = true;
 	}
-	if (secondComboStep >= SECONDCOMBO_STEP)
+	else if (!secondComboTriggered_ && secondComboStep >= SECONDCOMBO_STEP - 
+		judgeComboFrame && secondComboStep <= SECONDCOMBO_STEP + judgeComboFrame)
 	{
 		comboStep_ = COMBOCOUNT::SECONDSTEP;
+		secondComboTriggered_ = true;
 	}
-	if (thirdComboStep >= THIRDCOMBO_STEP)
+	else if (!thirdComboTriggered_ && thirdComboStep >= THIRDCOMBO_STEP - 
+		judgeComboFrame && thirdComboStep <= THIRDCOMBO_STEP + judgeComboFrame)
 	{
-		comboStep_ = COMBOCOUNT::THIRDSTEP;	
+		comboStep_ = COMBOCOUNT::THIRDSTEP;
+		thirdComboTriggered_ = true;
+	}
+	else
+	{
+		comboStep_ = COMBOCOUNT::NONE;
+	}
+
+	// アニメーションのリセット条件
+	if (animationController_->IsEndPlayAnimation())
+	{
+		firstComboTriggered_ = false;
+		secondComboTriggered_ = false;
+		thirdComboTriggered_ = false;
 	}
 }
 
@@ -789,110 +907,201 @@ void Player::Collision(void)
 	movedPos_ = VAdd(transform_.pos, movePow_);
 
 	// 衝突(カプセル)
-	CollisionCapsule();
+	//CollisionCapsule();
+	TestCollisionCapsule();
 
 	// 衝突(重力)
-	CollisionGravity();
+	SimpleGravity();
 
 	// 移動
 	transform_.pos = movedPos_;
 }
 
-void Player::CollisionGravity(void)
+void Player::SimpleGravity(void)
 {
-	// ジャンプ量を加算
-	movedPos_ = VAdd(movedPos_, jumpPow_);
+	// 足元の衝突
+	const MV1_COLL_RESULT_POLY& hitFoot =
+		playerFootCollsion_->OnCollisionResultPoly_Line(OBJECT_TYPE::STAGE);
 
-	// 重力方向
-	VECTOR dirGravity = Utility::DIR_D;
-
-	// 重力方向の反対
-	VECTOR dirUpGravity = Utility::DIR_U;
-
-	// 重力の強さ
-	float gravityPow = Planet::DEFAULT_GRAVITY_POW;
-
-	float checkPow = 10.0f;
-	gravHitPosUp_ = VAdd(movedPos_, VScale(dirUpGravity, gravityPow));
-	gravHitPosUp_ = VAdd(gravHitPosUp_, VScale(dirUpGravity, checkPow * 2.0f));
-	gravHitPosDown_ = VAdd(movedPos_, VScale(dirGravity, checkPow));
-	for (const auto c : colliders_)
+	// 足元の衝突判定
+	if (hitFoot.HitFlag)
 	{
+		gravity_ = 0.0f;
+		transform_.pos.y = hitFoot.HitPosition.y;
+		return;
+	}
 
-		// 地面との衝突
-		auto hit = MV1CollCheck_Line(
-			c.lock()->modelId_, -1, gravHitPosUp_, gravHitPosDown_);
-
-		// 最初は上の行のように実装して、木の上に登ってしまうことを確認する
-		//if (hit.HitFlag > 0)
-		if (hit.HitFlag > 0 && VDot(dirGravity, jumpPow_) > 0.9f)
-		{
-
-			// 衝突地点から、少し上に移動
-			movedPos_ = VAdd(hit.HitPosition, VScale(dirUpGravity, 2.0f));
-
-			// ジャンプリセット
-			jumpPow_ = Utility::VECTOR_ZERO;
-			stepJump_ = 0.0f;
-
-			if (isJump_)
-			{
-				//// 着地モーション
-				//animationController_->Play(
-				//	(int)ANIM_TYPE::JUMP, false, 29.0f, 45.0f, false, true);
-			}
-
-			isJump_ = false;
-
-		}
-
+	if (transform_.pos.y >= 0)
+	{
+		transform_.pos.y -= gravity_;
 	}
 }
 
 void Player::CollisionCapsule(void)
 {
+	//// カプセルを移動させる
+	//Transform trans = Transform(transform_);
+	//trans.pos = movedPos_;
+	//trans.Update();
+	//Capsule cap = Capsule(*capsule_, trans);
+
+	//// カプセルとの衝突判定
+	//for (const auto c : collider_)
+	//{
+
+	//	auto hits = MV1CollCheck_Capsule(
+	//		c.lock()->modelId_, -1,
+	//		cap.GetPosTop(), cap.GetPosDown(), cap.GetRadius());
+
+	//	for (int i = 0; i < hits.HitNum; i++)
+	//	{
+
+	//		auto hit = hits.Dim[i];
+
+	//		for (int tryCnt = 0; tryCnt < 10; tryCnt++)
+	//		{
+
+	//			int pHit = HitCheck_Capsule_Triangle(
+	//				cap.GetPosTop(), cap.GetPosDown(), cap.GetRadius(),
+	//				hit.Position[0], hit.Position[1], hit.Position[2]);
+
+	//			if (pHit)
+	//			{
+	//				movedPos_ = VAdd(movedPos_, VScale(hit.Normal, 1.0f));
+	//				// カプセルを移動させる
+	//				trans.pos = movedPos_;
+	//				trans.Update();
+	//				continue;
+	//			}
+
+	//			break;
+
+	//		}
+
+	//	}
+	//	// 検出した地面ポリゴン情報の後始末
+	//	MV1CollResultPolyDimTerminate(hits);
+	//}
+}
+
+void Player::TestCollisionCapsule(void)
+{
 	// カプセルを移動させる
 	Transform trans = Transform(transform_);
 	trans.pos = movedPos_;
 	trans.Update();
-	Capsule cap = Capsule(*capsule_, trans);
 
-	// カプセルとの衝突判定
-	for (const auto c : colliders_)
+	isCollisionStage_ = colliderController_->OnCollision(OBJECT_TYPE::STAGE);
+
+	auto& hits =
+		colliderController_->OnCollisionResultPoly(OBJECT_TYPE::STAGE);
+	hitNormal_ = Utility::VECTOR_ZERO;
+
+	auto& cols = colMng_.GetColliders();
+	int pHit = DEFAULT_ZERO;
+
+	// 衝突した複数のポリゴンと衝突回避するまで、
+	// プレイヤーの位置を移動させる
+	for (int i = DEFAULT_ZERO; i < hits.HitNum; i++)
 	{
-
-		auto hits = MV1CollCheck_Capsule(
-			c.lock()->modelId_, -1,
-			cap.GetPosTop(), cap.GetPosDown(), cap.GetRadius());
-
-		for (int i = 0; i < hits.HitNum; i++)
+		auto& hit = hits.Dim[i];
+		// 地面と異なり、衝突回避位置が不明なため、何度か移動させる
+		// この時、移動させる方向は、移動前座標に向いた方向であったり、
+		// 衝突したポリゴンの法線方向だったりする
+		for (int tryCnt = DEFAULT_ZERO; tryCnt < 10; tryCnt++)
 		{
+			// 再度、モデル全体と衝突検出するには、効率が悪過ぎるので、
+			// 最初の衝突判定で検出した衝突ポリゴン1枚と衝突判定を取る
 
-			auto hit = hits.Dim[i];
-
-			for (int tryCnt = 0; tryCnt < 10; tryCnt++)
+			for (const auto& player : colMng_.GetColliders())
 			{
+				if (player->GetObjType() != OBJECT_TYPE::PLAYER) { continue; }
 
-				int pHit = HitCheck_Capsule_Triangle(
-					cap.GetPosTop(), cap.GetPosDown(), cap.GetRadius(),
+				pHit = HitCheck_Capsule_Triangle(
+					player->GetPosTop(),
+					player->GetPosDown(),
+					player->GetRadius(),
 					hit.Position[0], hit.Position[1], hit.Position[2]);
-
-				if (pHit)
-				{
-					movedPos_ = VAdd(movedPos_, VScale(hit.Normal, 1.0f));
-					// カプセルを移動させる
-					trans.pos = movedPos_;
-					trans.Update();
-					continue;
-				}
-
 				break;
 
 			}
 
+			if (pHit)
+			{
+				float pushPow = moveSpeed_ / 7 * speedBuffRate_;
+				// 法線の方向にちょっとだけ移動させる
+				movedPos_ = VAdd(movedPos_, VScale(hit.Normal, pushPow));
+				// カプセルも一緒に移動させる
+				trans.pos = movedPos_;
+				trans.Update();
+				continue;
+			}
+			break;
 		}
-		// 検出した地面ポリゴン情報の後始末
-		MV1CollResultPolyDimTerminate(hits);
+	}
+	auto& hitFoot =
+		playerFootCollsion_->OnCollisionResultPoly_Line(OBJECT_TYPE::STAGE);
+	if (hitFoot.HitFlag)
+	{
+		hitNormal_ = hitFoot.Normal;
+	}
+}
+
+void Player::OnColliderFrame(void)
+{
+	// アニメーションの再生フレーム取得
+	float firstComboStep = animationController_->GetAnimData("COMBO_ONE").stepAnim;
+	float secondComboStep = animationController_->GetAnimData("COMBO_TWO").stepAnim;
+	float thirdComboStep = animationController_->GetAnimData("COMBO_THREE").stepAnim;
+	// 判定フラグ（フレームごとにトリガー管理）
+	static bool firstColTriggered = false;
+	static bool secondColTriggered = false;
+	static bool thirdColTriggered = false;
+	static bool thirdColSecondStepTriggered = false;
+
+	// 判定をリセット
+	onCol_ = false;
+
+	// 判定範囲拡大のための値
+	const float judgeComboFrame = 2.0f;
+
+	// 特定フレーム範囲内で、まだ判定されていない場合
+	if (!firstColTriggered &&
+		firstComboStep >= FIRSTCOL_FRAME - judgeComboFrame
+		&& firstComboStep <= FIRSTCOL_FRAME + judgeComboFrame)
+	{
+		onCol_ = true;
+		firstColTriggered = true;
+	}
+	else if (!secondColTriggered &&
+		secondComboStep >= SECONDCOL_FRAME - judgeComboFrame
+		&& secondComboStep <= SECONDCOL_FRAME + judgeComboFrame)
+	{
+		onCol_ = true;
+		secondColTriggered = true;
+	}
+	else if (!thirdColTriggered &&
+		thirdComboStep >= THIRDCOL_FRAME - judgeComboFrame 
+		&& thirdComboStep <= THIRDCOL_FRAME + judgeComboFrame)
+	{
+		onCol_ = true;
+		thirdColTriggered = true;
+	}
+	else if (!thirdColSecondStepTriggered &&
+		thirdComboStep >= THIRDCOL_SECONDSTEP_FRAME - judgeComboFrame 
+		&& thirdComboStep <= THIRDCOL_SECONDSTEP_FRAME + judgeComboFrame)
+	{
+		onCol_ = true;
+		thirdColSecondStepTriggered = true;
+	}
+
+	// アニメーションのリセット条件（必要に応じて実装）
+	if (animationController_->IsEndPlayAnimation())
+	{
+		firstColTriggered = false;
+		secondColTriggered = false;
+		thirdColTriggered = false;
+		thirdColSecondStepTriggered = false;
 	}
 }
 
@@ -902,7 +1111,7 @@ void Player::CalcGravityPow(void)
 	VECTOR dirGravity = Utility::DIR_D;
 
 	// 重力の強さ
-	float gravityPow = Planet::DEFAULT_GRAVITY_POW;
+	float gravityPow =1.0f/*= Stage::DEFAULT_GRAVITY_POW*/;
 
 	// 重力
 	VECTOR gravity = VScale(dirGravity, gravityPow);

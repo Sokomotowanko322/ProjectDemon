@@ -3,39 +3,35 @@
 #include "Transform.h"
 
 Transform::Transform(void)
+	:
+	modelId(-1),
+	scl(Utility::VECTOR_ONE),
+	rot(Utility::VECTOR_ZERO),
+	pos(Utility::VECTOR_ZERO),
+	localPos(Utility::VECTOR_ZERO),
+	matScl(MGetIdent()),
+	matRot(MGetIdent()),
+	matPos(MGetIdent()),
+	quaRot(Quaternion()),
+	quaRotLocal(Quaternion())
 {
-	modelId = -1;
 
-	scl = Utility::VECTOR_ONE;
-	rot = Utility::VECTOR_ZERO;
-	pos = Utility::VECTOR_ZERO;
-	localPos = Utility::VECTOR_ZERO;
-
-	matScl = MGetIdent();
-	matRot = MGetIdent();
-	matPos = MGetIdent();
-	quaRot = Quaternion();
-	quaRotLocal = Quaternion();
-
-	collider = nullptr;
 }
 
 Transform::Transform(int model)
+	:
+	modelId(model),
+	scl(Utility::VECTOR_ONE),
+	rot(Utility::VECTOR_ZERO),
+	pos(Utility::VECTOR_ZERO),
+	localPos(Utility::VECTOR_ZERO),
+	matScl(MGetIdent()),
+	matRot(MGetIdent()),
+	matPos(MGetIdent()),
+	quaRot(Quaternion()),
+	quaRotLocal(Quaternion())
 {
-	modelId = model;
 
-	scl = Utility::VECTOR_ONE;
-	rot = Utility::VECTOR_ZERO;
-	pos = Utility::VECTOR_ZERO;
-	localPos = Utility::VECTOR_ZERO;
-
-	matScl = MGetIdent();
-	matRot = MGetIdent();
-	matPos = MGetIdent();
-	quaRot = Quaternion();
-	quaRotLocal = Quaternion();
-
-	collider = nullptr;
 }
 
 Transform::~Transform(void)
@@ -68,30 +64,30 @@ void Transform::Update(void)
 		MV1SetMatrix(modelId, mat);
 	}
 
-	// è’ìÀîªíËÇÃçXêV
-	if (collider != nullptr)
-	{
-		MV1RefreshCollInfo(modelId);
-	}
+}
+
+//ÉÇÉfÉãÇÃå¸Ç´ï`âÊ
+void Transform::DrawDirection(float len)
+{
+	MATRIX mat = MGetIdent();
+	mat = MMult(mat, matScl);
+	Quaternion q = quaRot.Mult(quaRotLocal);
+	mat = MMult(mat, q.ToMatrix());
+
+	auto xDir = q.GetRight();
+	auto zDir = q.GetForward();
+	auto yDir = q.GetUp();
+
+
+	DrawLine3D(pos, VAdd(pos, VScale(xDir, len)), 0xff0000);
+	DrawLine3D(pos, VAdd(pos, VScale(yDir, len)), 0x00ff00);
+	DrawLine3D(pos, VAdd(pos, VScale(zDir, len)), 0x0000ff);
 
 }
 
 void Transform::SetModel(int model)
 {
 	modelId = model;
-}
-
-void Transform::MakeCollider(Collider::TYPE type)
-{
-
-	if (modelId == -1)
-	{
-		return;
-	}
-
-	collider = std::make_shared<Collider>(type, modelId);
-	int ret = MV1SetupCollInfo(modelId, -1, 1, 1, 1);
-
 }
 
 VECTOR Transform::GetForward(void) const
@@ -128,3 +124,4 @@ VECTOR Transform::GetDir(const VECTOR& vec) const
 {
 	return quaRot.PosAxis(vec);
 }
+

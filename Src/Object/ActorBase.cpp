@@ -3,8 +3,10 @@
 #include "ActorBase.h"
 
 ActorBase::ActorBase(void)
-	: resMng_(ResourceManager::GetInstance()),
-	scnMng_(SceneManager::GetInstance())
+	:
+	resMng_(ResourceManager::GetInstance()),
+	scnMng_(SceneManager::GetInstance()),
+	colMng_(SceneManager::GetInstance().GetColManager())
 {
 }
 

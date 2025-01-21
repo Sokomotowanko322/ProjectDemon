@@ -27,8 +27,8 @@ void ResourceManager::Init(void)
 #pragma region 画像ファイル
 
 	// タイトル画像
-	res = std::make_unique<Resource>(Resource::TYPE::IMG, Application::PATH_IMAGE + "Title.png");
-	resourcesMap_.emplace(SRC::TITLE, std::move(res));
+	res = std::make_unique<Resource>(Resource::TYPE::IMG, Application::PATH_IMAGE + "TitleImage.png");
+	resourcesMap_.emplace(SRC::TITLE_LOGO, std::move(res));
 
 	// PushSpace
 	res = std::make_unique<Resource>(Resource::TYPE::IMG, Application::PATH_IMAGE + "PushSpace.png");
@@ -61,6 +61,8 @@ void ResourceManager::Init(void)
 	// ステージ
 	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Stage/Stage.mv1");
 	resourcesMap_.emplace(SRC::STAGE, std::move(res));
+	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Stage/Colliders.mv1");
+	resourcesMap_.emplace(SRC::STAGE_COLLIDER, std::move(res));
 
 	// 敵モデル
 	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Enemy/NormalEnemy.mv1");
@@ -106,6 +108,9 @@ void ResourceManager::Init(void)
 	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Enemy/NormalEnemyAnim/NormalAttack.mv1");
 	resourcesMap_.emplace(SRC::NORMAL_ENEMY_NORMALATTACK, std::move(res));
 
+	// 死亡
+	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Enemy/NormalEnemyAnim/Death.mv1");
+	resourcesMap_.emplace(SRC::NORMAL_ENEMY_DEATH, std::move(res));
 
 #pragma endregion
 
@@ -118,6 +123,10 @@ void ResourceManager::Init(void)
 	// 吸収エフェクト
 	res = std::make_unique<Resource>(Resource::TYPE::EFFEKSEER, Application::PATH_EFFECT + "Inhale.efkefc");
 	resourcesMap_.emplace(SRC::EFFECT_INHALE, std::move(res));
+	
+	// ヒット時エフェクト
+	res = std::make_unique<Resource>(Resource::TYPE::EFFEKSEER, Application::PATH_EFFECT + "Slash_Hit.efkefc");
+	resourcesMap_.emplace(SRC::EFFECT_HIT, std::move(res));
 
 #pragma endregion
 
