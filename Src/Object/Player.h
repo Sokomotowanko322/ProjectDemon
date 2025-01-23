@@ -13,7 +13,6 @@ class Collider;
 class Capsule;
 class ModelMaterial;
 class ModelRenderer;
-class Soul;
 class TestEnemy;
 class Weapon;
 
@@ -46,6 +45,7 @@ public:
 		COMBO_TWO,
 		COMBO_THREE,
 		INHALE,
+		COUNTER,
 		WARP_PAUSE,
 		FLY,
 		FALLING,
@@ -63,6 +63,7 @@ public:
 		"COMBO_TWO",
 		"COMBO_THREE",
 		"INHALE",
+		"COUNTER",
 	};
 
 	enum COMBOCOUNT
@@ -83,6 +84,9 @@ public:
 	void Update(void) override;
 	void Draw(void) override;
 
+	// ダメージ処理
+	void SetDamage(int damage);
+
 	// 攻撃しているか
 	bool IsAttack(void);
 
@@ -94,6 +98,9 @@ public:
 	// ヒット時エフェクト
 	void HitEffect(VECTOR pos);
 
+	int GetHp(void);
+	int GetMaxHp(void);
+
 	// 衝突用カプセルの取得
 	const Capsule& GetCapsule(void) const;
 	
@@ -102,6 +109,10 @@ public:
 	VECTOR& GetLeftHandPos(void);
 	VECTOR& GetPos(void);
 	
+	// 無敵状態の設定
+	void SetInvincibility(bool invincibility);
+	bool GetInvincibility(void);
+
 private:
 
 	// アニメーション
@@ -114,12 +125,8 @@ private:
 	std::shared_ptr<Weapon> weapon_;
 	
 	// 敵
-	std::shared_ptr<TestEnemy> enemy_;
-	//std::vector<std::vector<float>> enemyAllPositions_;
-
-	// 魂
-	std::shared_ptr<Soul> soul_;
-
+	std::weak_ptr<TestEnemy> enemy_;
+	
 	// 吸収時エフェクト
 	VECTOR effectInhalePos_;
 	int effectInhaleResId_;
@@ -174,9 +181,11 @@ private:
 	// 移動スピード
 	float moveSpeed_;
 	float speedBuffRate_;
+	int hp_;
+	int maxHp_;
 	;
 	bool hitGround_;
-
+	bool invincibility_;
 	
 	//足元衝突している地面ポリゴンの法線
 	VECTOR hitNormal_;
@@ -218,13 +227,13 @@ private:
 	// 入力受付時間
 	float stepJump_;
 	float comboInputTime_;
+	float deltaTime_;
 	int comboStep_;
 
 	// 衝突判定に用いられるコライダ
 	std::vector<std::weak_ptr<Collider>> collider_;
 	std::unique_ptr<ColliderController> colliderController_;
 	std::unique_ptr<ColliderController> playerFootCollsion_;
-
 	std::unique_ptr<Capsule> capsule_;
 
 	// 衝突チェック
@@ -237,7 +246,7 @@ private:
 	// トゥーンマップ
 	int imgToonMap_;
 
-	//重力
+	// 重力
 	float gravity_;
 
 	// アニメーション制御
@@ -267,7 +276,8 @@ private:
 	// 操作
 	void ProcessMove(void);
 	void ProcessInhale(void);
-	void ProcessJump(void);
+	void ProcessCounter(void);
+	void CheckCounter(void);
 	void MoveControll(void);
 
 	// 攻撃

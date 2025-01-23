@@ -31,6 +31,8 @@ const char PATH_PIXELSHADER[] = "Data/Shader/PixelShader.pso";
 const char PATH_POSTEFFECT[] = "Data/Shader/PostEffect.pso";
 const char DATA_DISSOLVE[] = "Data/Image/Dissolve.png";
 
+const char MODEL_FRAMEARM[] = "mixamorig:LeftHand";
+
 const char IDLE[] = "IDLE";
 const char WALK[] = "WALK";
 const char NORMAL_ATTACK[] = "NORMALATTACK";
@@ -45,6 +47,10 @@ const VECTOR MODEL_SCALE = { 1.0f, 1.0f, 1.0f };
 const VECTOR ENEMY_CAPSULE_TOP = { 0.0f, 90.0f,0.0f };
 const VECTOR ENEMY_CAPSULE_BOTTOM = { 0.0f, 0.0f,0.0f };
 
+const int DAMAGE = 5;
+const int L_FRAME_NUM = 10;
+
+const float ATTACK_COLFRAME = 76.0f;
 
 const float VIEW_ANGLE = 30.0f;
 const float VIEW_RANGE = 3000.0f;
@@ -54,21 +60,27 @@ const float FAR_RANGE = 300.0f;
 const float DEVIDE_STEPCOUNT = 4.0f;
 const float DOT_MIN = 0.99f;
 
+// 重力量
+const float GRAVITY_POW = 10.0f;
+
 const float WALK_SPEED = 4.0f;
 const float NORMAL_ANIM_SPEED = 60.0f;
 const float ROTATION_MIN = 0.001f;
 
-static constexpr float ENEMY_CAPSULE_RADIUS = 50.0f;
+const float POLI_HIT_MOVE = 1.0f;
+const float ENEMY_CAPSULE_RADIUS = 100.0f;
+const float ATTACK_COL_SCALE = 30.0f;
+const float ARM_COL_RADIUS = 30.0f;
+const VECTOR ARM_COL_VSUB = Utility::VECTOR_ZERO;
+const VECTOR ARM_COL_VADD = { 0.0,50.0f,0.0f };
 
-
-//bool searching_ = false;
-
+const int MAX_HP = 300;
 
 TestEnemy::TestEnemy(std::weak_ptr<Player> player)
-/*: state_(STATE::IDLE)*/
 {
 	player_ = player;
-	hp_ = 600;
+	hp_ = MAX_HP;
+
 	//関数ポインタの初期化
 	stateChange_.emplace(STATE::IDLE, std::bind(&TestEnemy::ChangeIdle, this));
 	stateChange_.emplace(STATE::WALK, std::bind(&TestEnemy::ChangeWalk, this));
@@ -95,9 +107,12 @@ void TestEnemy::Init(void)
 
 	weapon_ = std::make_shared<Weapon>();
 
+	armFrame_ = MV1SearchFrame(enemyTransform_.modelId, MODEL_FRAMEARM);
+
 	isAlive_ = true;
 	isEndMove_ = false;
 	atkFlag_ = false;
+	wallCollFlag_ = false;
 	isCatchPlayerPos_ = false;
 	cntDelay_ = 2.0f;
 	attackDelay_ = 0.0f;
@@ -105,8 +120,11 @@ void TestEnemy::Init(void)
 	camera_ = std::make_unique<Camera>();
 	
 	colliderController_ = std::make_unique<ColliderController>();
-
 	colliderController_->SetCollision(OBJECT_TYPE::ENEMY_MODEL);
+
+	colliderStage_ = std::make_unique<ColliderController>();
+	colliderStage_->SetCollision(OBJECT_TYPE::ENEMY_MODEL);
+
 
 	InitAnimation();
 	ChangeState(STATE::IDLE);
@@ -136,6 +154,18 @@ void TestEnemy::InitAnimation(void)
 
 void TestEnemy::Update(void)
 {
+
+	//浮いていたら重力をかける
+	if (enemyTransform_.pos.y >= 0.0f)
+	{
+		SimpleGravity();
+	}
+
+	if (enemyTransform_.pos.y <= 0.0f)
+	{
+		enemyTransform_.pos.y = 0.0f;
+	}
+
 	// モデル制御更新
 	enemyTransform_.Update();
 
@@ -150,6 +180,7 @@ void TestEnemy::Update(void)
 
 	// 衝突判定
 	AddCollider();
+	CollisionStage();
 
 	// プレイヤーと敵の衝突処理
 	ResolveCollision(player_.lock()->GetPos(), 50.0f, enemyTransform_.pos, 50.0f);
@@ -167,10 +198,13 @@ void TestEnemy::Draw(void)
 
 	MV1DrawModel(enemyTransform_.modelId);
 	
+	VECTOR pos = MV1GetFramePosition(enemyTransform_.modelId, armFrame_);
+	// 球の描画
+	DrawSphere3D(pos, 50.0f, 8, GetColor(255, 255, 0), GetColor(255, 255, 255), false);
 	// 現在のSTATEを表示する
-	DrawFormatString(0, 90, GetColor(255, 255, 255), "Current STATE: %d", state_);
+	/*DrawFormatString(0, 90, GetColor(255, 255, 255), "Current STATE: %d", state_);
 	DrawFormatString(0, 140, GetColor(255, 255, 255), "enemyPosition: (%0.2f,%0.2f,%0.2f)",
-		enemyTransform_.pos.x, enemyTransform_.pos.y, enemyTransform_.pos.z);
+		enemyTransform_.pos.x, enemyTransform_.pos.y, enemyTransform_.pos.z);*/
 
 }
 
@@ -178,6 +212,11 @@ void TestEnemy::SetPos(VECTOR pos)
 {
 	enemyTransform_.pos = pos;
 	enemyTransform_.Update();
+}
+
+VECTOR TestEnemy::GetPos(void)
+{
+	return enemyTransform_.pos;
 }
 
 void TestEnemy::ChangeState(STATE state)
@@ -203,6 +242,21 @@ void TestEnemy::SetDamage(int damage)
 		ChangeState(STATE::DEATH);
 		return;
 	}
+}
+
+int TestEnemy::GetHp(void)
+{
+	return hp_;
+}
+
+bool TestEnemy::IsAttack(void)
+{
+	return atkFlag_;
+}
+
+bool TestEnemy::IsAlive(void)
+{
+	return isAlive_;
 }
 
 void TestEnemy::ChangeIdle(void)
@@ -284,42 +338,41 @@ void TestEnemy::UpdateAttack(void)
 	enemyTransform_.quaRot.x = 0.0f;
 	enemyTransform_.quaRot.z = 0.0f;
 	float stepAnim = animationController_->GetAnimData(NORMAL_ATTACK).stepAnim;
-	float totalBiteAnim = animationController_->GetAnimData(NORMAL_ATTACK).animTotalTime;
-	//if (stepAnim >= BITE_COLFRAME)
-	//{
-	//	onColBiteFlag_ = true;
-	//}
-	//if (onColBiteFlag_)
-	//{
-	//	//コリジョンセット
-	//	colliderController_->SetCollision(OBJECT_TYPE::ENEMY_VOL);
-	//	colliderController_->SetCollisionSub(ENEMY_SUBTYPE::HEAD);
+	float totalAtkAnim = animationController_->GetAnimData(NORMAL_ATTACK).animTotalTime;
+	if (stepAnim >= ATTACK_COLFRAME)
+	{
+		onColFlag_ = true;
+	}
+	if (onColFlag_)
+	{
+		//コリジョンセット
+		colliderController_->SetCollision(OBJECT_TYPE::ENEMY_MODEL);
+		colliderController_->SetCollisionSub(ENEMY_SUBTYPE::HAND_L);
 
-	//	const auto& hits = colliderController_->OnCollision(OBJECT_TYPE::PLAYER);
-	//	const auto& hitpoly = colliderController_->OnCollisionResultPoly(OBJECT_TYPE::PLAYER);
+		VECTOR pos = MV1GetFramePosition(enemyTransform_.modelId, armFrame_);
 
-	//	auto hitDir = VNorm(VSub(player_.lock()->GetPos(), transform_.pos));
-	//	bool muteki = player_.lock()->GetInvincibility();
-	//	//プレイヤーに攻撃が当たった時
-	//	if (hits && !muteki)
-	//	{
-	//		player_.lock()->IsImpact(Player::PATTERN_NUM::TWO);
-	//		//プレイヤーがガードしなかったら
-	//		if (player_.lock()->GetSTATE() != Player::STATE::BLOCK)
-	//		{
-	//			//ダメージを与える
-	//			player_.lock()->Damage(BITING_DAMAGE);
-	//			player_.lock()->SetHitDir(hitDir, BITE_HITPOW);
-	//			player_.lock()->SetInvincibility(true);
-	//		}
-	//	}
-	//	else if (hits && player_.lock()->GetSTATE() != Player::STATE::HIT)
-	//	{
-	//		player_.lock()->SetIsSlow(true);
-	//	}
-	//}
 
-	if (stepAnim >= totalBiteAnim)
+		const auto& hits = /*colliderController_->OnCollision(OBJECT_TYPE::PLAYER)*/
+			HitCheck_Sphere_Capsule(pos, ARM_COL_RADIUS, VSub(player_.lock()->GetPos(), ARM_COL_VSUB),
+			VAdd(player_.lock()->GetPos(), ARM_COL_VADD), 50.0f);
+
+		const auto& hitpoly = colliderController_->OnCollisionResultPoly(OBJECT_TYPE::PLAYER);
+
+		auto hitDir = HitCheck_Sphere_Capsule(pos, ARM_COL_RADIUS, VSub(player_.lock()->GetPos(), ARM_COL_VSUB),
+			VAdd(player_.lock()->GetPos(), ARM_COL_VADD) ,25.0f);
+
+		bool invincible = player_.lock()->GetInvincibility();
+
+		//プレイヤーに攻撃が当たった時
+		if (hits && !invincible)
+		{
+			//ダメージを与える
+			player_.lock()->SetDamage(DAMAGE);
+			player_.lock()->SetInvincibility(true);
+		}
+	}
+
+	if (stepAnim >= totalAtkAnim)
 	{
 		ChangeState(STATE::IDLE);
 	}
@@ -332,6 +385,7 @@ void TestEnemy::UpdateDeath(void)
 	if(!isAlive_)
 	{
 		animationController_->ChangeAnimation("DEATH");
+
 		return;
 	}
 }
@@ -341,7 +395,7 @@ void TestEnemy::AddCollider(void)
 	// 敵モデル
 	colMng_.AddCollider(
 		OBJECT_TYPE::ENEMY_MODEL,
-		COL_TYPE::SPHERE,
+		COL_TYPE::CAPSULE,
 		enemyTransform_,
 		true,
 		0, 0,
@@ -350,7 +404,89 @@ void TestEnemy::AddCollider(void)
 		ENEMY_CAPSULE_TOP,
 		ENEMY_CAPSULE_BOTTOM
 	);
+	//左手
+	colMng_.AddCollider(
+		OBJECT_TYPE::ENEMY_MODEL, 
+		COL_TYPE::SPHERE,
+		enemyTransform_,
+		true,
+		-1,
+		L_FRAME_NUM, 
+		ENEMY_SUBTYPE::HAND_L, 
+		ARM_COL_RADIUS);
 
+}
+
+void TestEnemy::CollisionStage(void)
+{
+	const auto& hitStage = colliderStage_->OnCollision(OBJECT_TYPE::STAGE);
+	wallCollFlag_ = hitStage;
+	const auto& hits = colliderStage_->OnCollisionResultPoly(OBJECT_TYPE::STAGE);
+	auto& colMng = scnMng_.GetColManager();
+	int tgHit = 0;
+
+	if (wallCollFlag_)
+	{
+		for (int i = 0; i < hits.HitNum; i++)
+		{
+			auto& hit = hits.Dim[i];
+			// 地面と異なり、衝突回避位置が不明なため、何度か移動させる
+			// この時、移動させる方向は、移動前座標に向いた方向であったり、
+			// 衝突したポリゴンの法線方向だったりする
+			for (int tryCnt = 0; tryCnt < 10; tryCnt++)
+			{
+
+				// 再度、モデル全体と衝突検出するには、効率が悪過ぎるので、
+				// 最初の衝突判定で検出した衝突ポリゴン1枚と衝突判定を取る
+
+				for (const auto& col : colMng.GetColliders())
+				{
+					if (col->GetObjType() != OBJECT_TYPE::ENEMY_MODEL) { continue; }
+
+					tgHit = HitCheck_Sphere_Triangle(
+						col->GetPos(),
+						col->GetRadius(),
+						hit.Position[0], hit.Position[1], hit.Position[2]);
+					break;
+
+				}
+
+				if (tgHit)
+				{
+					// 法線の方向にちょっとだけ移動させる
+					movePos_ = VAdd(movePos_, VScale(hit.Normal, POLI_HIT_MOVE));
+					// カプセルも一緒に移動させる
+					enemyTransform_.pos = VAdd(enemyTransform_.pos, movePos_);
+					enemyTransform_.Update();
+
+					continue;
+				}
+				break;
+			}
+		}
+	}
+}
+
+void TestEnemy::SimpleGravity(void)
+{
+	// 足元の衝突
+	const MV1_COLL_RESULT_POLY& hitFoot =
+		colliderController_->OnCollisionResultPoly_Line(OBJECT_TYPE::STAGE);
+
+	// 足元の衝突判定
+	if (hitFoot.HitFlag)
+	{
+		gravity_ = 0.0f;
+		enemyTransform_.pos.y = hitFoot.HitPosition.y;
+		return;
+	}
+
+	gravity_ += GRAVITY_POW;
+
+	if (enemyTransform_.pos.y >= 0)
+	{
+		enemyTransform_.pos.y += gravity_;
+	}
 }
 
 void TestEnemy::JudgeAct(void)

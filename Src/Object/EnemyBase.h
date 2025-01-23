@@ -4,6 +4,7 @@
 class Player;
 class ResourceManager;
 class SceneManager;
+class ColliderController;
 class AnimationController;
 
 class EnemyBase
@@ -36,6 +37,12 @@ protected:
 
 	// アニメーション制御
 	std::unique_ptr<AnimationController> animationController_;
+
+	// コリジョンコントローラー
+	std::unique_ptr<ColliderController> colliderController_;
+
+	// ステージのコリジョンコントローラー
+	std::unique_ptr<ColliderController> colliderStage_;
 
 	// モデル制御の基本情報
 	Transform enemyTransform_;

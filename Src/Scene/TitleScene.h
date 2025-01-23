@@ -24,5 +24,11 @@ private:
 	// シングルトン参照
 	ResourceManager& resMng_;
 
-	int titleLogo_;
+	//表示を点滅させるカウント
+	int blinkCnt_;
+	int count_;
+
+	//
+	int titleImg_;
+	int startImg_;
 };

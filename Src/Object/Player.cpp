@@ -20,8 +20,8 @@
 
 // 追従対象からエフェクトまでの相対座標(完全追従)
 const VECTOR LOCAL_POS = { 0.0f, -5.0f,0.0f };
-const VECTOR PLAYER_CAPSULE_TOP = { 0.0f, 250.0f,0.0f };
-const VECTOR PLAYER_CAPSULE_BOTTOM = { 0.0f, 90.0f,0.0f };
+const VECTOR PLAYER_CAPSULE_TOP = { 0.0f, 500.0f,0.0f };
+const VECTOR PLAYER_CAPSULE_BOTTOM = { 0.0f, 0.0f,0.0f };
 const VECTOR PLAYER_FOOT_TOP = { 0.0f, 0.0f,0.0f };
 const VECTOR PLAYER_FOOT_BOTTOM = { 0.0f, -2.0f,0.0f };
 const VECTOR PLAYER_WEAPON_TOP = { 0.0f, 300.0f,0.0f };
@@ -63,7 +63,7 @@ const float	STICK_VALUE_MAX = 1000.0f;
 const float	REVERSE_VALUE = -1.0f;
 const float	TIMEROT_NORMAL = 0.5f;
 const float	TIMEROT_FAST = 0.1f;
-const float INPUT_RECEPTION_TIME = 1.0f;
+const float INPUT_RECEPTION_TIME = 1.4f;
 
 // アニメーションの遷移フレーム
 const float FIRSTCOL_FRAME = 36.0f;
@@ -79,7 +79,8 @@ const float INHALE_STARTSTEP = 30.0f;
 Player::Player(void) :
 	colliderController_(std::make_unique<ColliderController>()),
 	playerFootCollsion_(std::make_unique<ColliderController>()),
-	isCollisionStage_(false),
+	isCollisionStage_(false), 
+	invincibility_(false),
 	hitNormal_({})
 {
 	animationController_ = nullptr;
@@ -164,11 +165,14 @@ void Player::Init(void)
 	capsule_->SetLocalPosDown({ 0.0f, 30.0f, 0.0f });
 	capsule_->SetRadius(20.0f);
 
+	invincibility_ = false;
 	isCollisionStage_ = false;
 	firstComboTriggered_ = false;
 	secondComboTriggered_ = false;
 	thirdComboTriggered_ = false;
 	AddCollider();
+	maxHp_ = 60;
+	hp_ = maxHp_;
 
 	// 重力
 	gravity_ = GRAVITY_POW;
@@ -216,6 +220,8 @@ void Player::Init(void)
 
 	stepRotTime_ = TIMEROT_NORMAL;
 	effectHitScale_ = 50.0f;
+
+	deltaTime_ = scnMng_.GetInstance().GetDeltaTime();
 	// 初期状態
 	ChangeAnim(ANIM_TYPE::IDLE);
 	ChangeState(STATE::PLAY);
@@ -223,6 +229,18 @@ void Player::Init(void)
 
 void Player::Update(void)
 {
+
+	//浮いていたら重力をかける
+	if (transform_.pos.y >= 0.0f)
+	{
+		SimpleGravity();
+	}
+
+	if (transform_.pos.y <= 0.0f)
+	{
+		transform_.pos.y = 0.0f;
+	}
+
 	// 更新ステップ
 	stateUpdate_();
 
@@ -239,7 +257,7 @@ void Player::Update(void)
 	animationController_->Update();
 
 	// 武器位置同期
-	weapon_->WeaponUpdate(transform_, true, true);
+	weapon_->WeaponUpdate(transform_, isAttack_, true);
 }
 
 void Player::Draw(void)
@@ -249,8 +267,8 @@ void Player::Draw(void)
 	auto cPos = camera.GetPos();
 	material_->SetConstBufVS(0, { cPos.x, cPos.y, cPos.z, 0.0f });
 	auto lHand = MV1GetFramePosition(transform_.modelId, leftHandBoneFrame_);
-	DrawFormatString(0, 0, GetColor(255, 255, 255), "Position: (%0.2f,%0.2f,%0.2f)", transform_.pos.x, transform_.pos.y, transform_.pos.z);// 頂点：カメラ座標
-	DrawFormatString(0, 40, GetColor(255, 255, 255), "handPosition: (%0.2f,%0.2f,%0.2f)", lHand.x, lHand.y, lHand.z);// 頂点：カメラ座標
+	//DrawFormatString(0, 0, GetColor(255, 255, 255), "Position: (%0.2f,%0.2f,%0.2f)", transform_.pos.x, transform_.pos.y, transform_.pos.z);// 頂点：カメラ座標
+	//DrawFormatString(0, 40, GetColor(255, 255, 255), "handPosition: (%0.2f,%0.2f,%0.2f)", lHand.x, lHand.y, lHand.z);// 頂点：カメラ座標
 
 	// モデルの描画
 	renderer_->Draw();
@@ -260,6 +278,20 @@ void Player::Draw(void)
 	
 	// 丸影描画
 	DrawShadow();
+}
+
+void Player::SetDamage(int damage)
+{
+	if (!invincibility_)
+	{
+		hp_ -= damage;
+	}
+	
+	if (hp_ <= 0)
+	{
+		//ChangeState(STATE::DEAD);
+		return;
+	}
 }
 
 bool Player::IsAttack(void)
@@ -328,6 +360,16 @@ VECTOR& Player::GetPos(void)
 	return transform_.pos;
 }
 
+void Player::SetInvincibility(bool invincibility)
+{
+	invincibility_ = invincibility;
+}
+
+bool Player::GetInvincibility(void)
+{
+	return invincibility_;
+}
+
 const Player::ANIM_TYPE Player::GetNowAnim(void) const
 {
 	return animType_;
@@ -355,6 +397,8 @@ void Player::InitAnimation(void)
 		0.0f, NORMAL_ANIM_SPEED, resMng_.LoadModelDuplicate(ResourceManager::SRC::PLAYER_SECONDCOMBO), false, 0, false);
 	animationController_->Add("COMBO_THREE", path + "ComboThird.mv1",
 		0.0f, NORMAL_ANIM_SPEED, resMng_.LoadModelDuplicate(ResourceManager::SRC::PLAYER_THIRDCOMBO), false, 0, false);
+	animationController_->Add("COUNTER", path + "Counter.mv1",
+		0.0f, NORMAL_ANIM_SPEED, resMng_.LoadModelDuplicate(ResourceManager::SRC::PLAYER_COUNTER), false, 0, false);
 
 	// 魂吸収アニメーション
 	animationController_->Add("INHALE", path + "Inhale.mv1",
@@ -452,7 +496,7 @@ void Player::UpdatePlay(void)
 	//移動量ゼロ
 	movePow_ = Utility::VECTOR_ZERO;
 	moveDir_ = Utility::VECTOR_ZERO;
-	
+
 	// 衝突判定フレーム
 	OnColliderFrame();
 	
@@ -473,6 +517,7 @@ void Player::UpdatePlay(void)
 	
 	// 攻撃処理
 	ProcessAttack();
+	ProcessCounter();
 
 	// 魂の吸収
 	ProcessInhale();
@@ -493,6 +538,16 @@ void Player::HitEffect(VECTOR pos)
 
 	SetPosPlayingEffekseer3DEffect(hitEfPlayId_, pos.x, pos.y, pos.z);
 	SetScalePlayingEffekseer3DEffect(hitEfPlayId_, effectHitScale_, effectHitScale_, effectHitScale_);
+}
+
+int Player::GetHp(void)
+{
+	return hp_;
+}
+
+int Player::GetMaxHp(void)
+{
+	return maxHp_;
 }
 
 void Player::UpdateInhale(void)
@@ -646,39 +701,6 @@ void Player::ProcessInhale(void)
 	}
 }
 	
-void Player::ProcessJump(void)
-{
-
-	bool isHit = CheckHitKey(KEY_INPUT_BACKSLASH);
-
-	// ジャンプ
-	if (isHit && (isJump_ || IsEndLanding()))
-	{
-
-		if (!isJump_)
-		{
-			//// 無理やりアニメーション
-			//animationController_->Play((int)ANIM_TYPE::JUMP, true, 13.0f, 25.0f);
-			//animationController_->SetEndLoop(23.0f, 25.0f, 5.0f);
-		}
-
-		isJump_ = true;
-
-		// ジャンプの入力受付時間をヘラス
-		stepJump_ += scnMng_.GetDeltaTime();
-		if (stepJump_ < TIME_JUMP_IN)
-		{
-			jumpPow_ = VScale(Utility::DIR_U, POW_JUMP);
-		}
-	}
-
-	// ボタンを離したらジャンプ力に加算しない
-	if (!isHit)
-	{
-		stepJump_ = TIME_JUMP_IN;
-	}
-}
-
 void Player::MoveControll(void)
 {
 	rotRad_ = 0.0f;
@@ -736,14 +758,14 @@ void Player::MoveControll(void)
 void Player::ProcessAttack(void)
 {
 	auto& ins = InputManager::GetInstance();
-	float deltaTime_ = 1.0;
 	
 	// コンボタイマーを減らす
 	if (comboInputTime_ >= 0.0f)
 	{
 		comboInputTime_ -= deltaTime_;
 	}
-	else
+	else if(comboInputTime_ <= 0.0f 
+		&& animationController_->IsEndPlayAnimation())
 	{
 		// 攻撃リセット
 		comboStep_ = 0;
@@ -780,7 +802,7 @@ void Player::ProcessAttack(void)
 	else if (comboStep_ == 3 && comboInputTime_ >= 0.0f
 		&& !ins.IsTriggered(InputManager::ACTION::ATTACK))
 	{
-		isAttack_ = false;
+		isAttack_ = true;
 	}
 	
 	// コンボ段階を下げる
@@ -806,9 +828,6 @@ void Player::ResetCombo(void)
 
 	// 判定をリセット
 	comboStep_ = COMBOCOUNT::NONE;
-
-	// 入力受付時間のリセットと少し延ばす
-	comboInputTime_ = INPUT_RECEPTION_TIME;
 
 	// 判定範囲拡大のための値
 	const float judgeComboFrame = 2.0f;
@@ -930,6 +949,8 @@ void Player::SimpleGravity(void)
 		transform_.pos.y = hitFoot.HitPosition.y;
 		return;
 	}
+
+	gravity_ += GRAVITY_POW;
 
 	if (transform_.pos.y >= 0)
 	{
@@ -1065,7 +1086,7 @@ void Player::OnColliderFrame(void)
 	// 判定範囲拡大のための値
 	const float judgeComboFrame = 2.0f;
 
-	// 特定フレーム範囲内で、まだ判定されていない場合
+	// 特定フレーム範囲で入力判定されていない場合
 	if (!firstColTriggered &&
 		firstComboStep >= FIRSTCOL_FRAME - judgeComboFrame
 		&& firstComboStep <= FIRSTCOL_FRAME + judgeComboFrame)
@@ -1095,7 +1116,7 @@ void Player::OnColliderFrame(void)
 		thirdColSecondStepTriggered = true;
 	}
 
-	// アニメーションのリセット条件（必要に応じて実装）
+	// アニメーションのリセット条件
 	if (animationController_->IsEndPlayAnimation())
 	{
 		firstColTriggered = false;
@@ -1125,6 +1146,16 @@ void Player::CalcGravityPow(void)
 		// 重力方向と反対方向(マイナス)でなければ、ジャンプ力を無くす
 		jumpPow_ = gravity;
 	}
+}
+
+void Player::ProcessCounter(void)
+{
+	auto& ins = InputManager::GetInstance();
+	/*if (enemy_.lock()->IsAttack() && ins.IsPressed(InputManager::ACTION::ATTACK))
+	{
+		ChangeAnim(ANIM_TYPE::COUNTER);
+		isAttack_ = true;
+	}*/
 }
 
 bool Player::IsEndLanding(void)

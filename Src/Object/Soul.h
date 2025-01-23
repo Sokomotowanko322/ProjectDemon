@@ -17,7 +17,7 @@ public:
 	};
 
 	// コンストラクタ & デストラクタ
-	Soul(std::weak_ptr<Player> player);
+	Soul(std::weak_ptr<Player> player,VECTOR enemyPos);
 	~Soul(void);
 
 	void Init(void);
@@ -27,7 +27,10 @@ public:
 	void UpdateFloating(void);
 	void UpdateInhale(void);
 	
+	void SetPos(VECTOR pos);
+	
 	void Draw(void);
+	void AddEffect(VECTOR pos);
 	void StopEffect(void);
 
 private:

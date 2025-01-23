@@ -8,13 +8,13 @@
 #include "EnemyBase.h"
 
 class Player;
+class ColliderController;
 class AnimationController;
 class Collider;
 class Capsule;
 class Camera;
 class Player;
 class Weapon;
-class Soul;
 
 class TestEnemy : public EnemyBase
 {
@@ -90,6 +90,7 @@ public:
 
 	// 敵の位置を設定
 	void SetPos(VECTOR pos);
+	VECTOR GetPos(void);
 
 	// 状態遷移
 	void ChangeState(STATE state);
@@ -97,13 +98,19 @@ public:
 	// ダメージ処理
 	void SetDamage(int damage);
 
-	// 衝突判定に用いられるコライダ制御
-	void AddCollider(std::weak_ptr<Collider> collider);
-	void ClearCollider(void);
-	bool CheckCollision(const VECTOR& p1, float r1, const VECTOR& p2, float r2);
-	void ResolveCollision(VECTOR& p1, float r1, VECTOR& p2, float r2);
+	
+	bool IsAttack(void);
+	bool IsAlive(void);
 	bool isAlive_;
+
+	// 衝突判定に用いられるコライダ制御
+	bool CheckCollision(const VECTOR& p1, float r1, const VECTOR& p2, float r2);
+	int GetHp(void);
+	void ResolveCollision(VECTOR& p1, float r1, VECTOR& p2, float r2);
+	
 private:
+
+	VECTOR movePos_;
 
 	// コリジョンコントローラー
 	std::unique_ptr<ColliderController> colliderController_;
@@ -135,20 +142,27 @@ private:
 	void UpdateAttack(void);
 	void UpdateDeath(void);
 
+	// 衝突判定
 	void AddCollider(void);
 
+	// ステージとの衝突判定
+	void CollisionStage(void);
+	void SimpleGravity(void);
+
+	// 状態判定
 	void JudgeAct(void);
 
+	// 遠ければプレイヤーに接近
 	void ApproachToPlayer(void);
-	//// モデル描画用用
-	//std::unique_ptr<ModelMaterial> material_;
-	//std::unique_ptr<ModelRenderer> renderer_;
-
+	
 	// アニメーション制御用
 	std::unique_ptr<AnimationController> animationController_;
 
 	// コライダ
 	std::weak_ptr<Collider> collider_;
+
+	// ステージのコリジョンコントローラー
+	std::unique_ptr<ColliderController> colliderStage_;
 	
 	// カメラ情報の取得
 	std::unique_ptr<Camera> camera_;
@@ -170,18 +184,26 @@ private:
 	//int vertexShader_;
 	//int postEffect_;
 
+	// パラメータ
 	int hp_;
+
+	// フレーム(骨格)
+	int armFrame_;
 
 	bool isCatchPlayerPos_;
 	bool isEndMove_;
 	bool atkFlag_;
+	bool onColFlag_;;
+	bool wallCollFlag_;
 	
-
 	// デルタタイム
 	float deltaTime_;
 
 	// 回転にかかる時間
 	float rotationStep_;
+	
+	//重力
+	float gravity_;
 
 	// 次の攻撃までのディレイ
 	float attackDelay_;

@@ -9,7 +9,6 @@ class Collider;
 class Capsule;
 class Camera;
 class Player;
-class Soul;
 class ModelMaterial;
 class ModelRenderer;
 

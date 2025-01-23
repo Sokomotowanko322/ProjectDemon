@@ -30,7 +30,7 @@ SceneManager& SceneManager::GetInstance(void)
 void SceneManager::Init(void)
 {
 
-	sceneId_ = SCENE_ID::TITLE_LOGO;
+	sceneId_ = SCENE_ID::TITLE_IMAGE;
 	waitSceneId_ = SCENE_ID::NONE;
 
 	fader_ = std::make_unique<Fader>();
@@ -53,7 +53,7 @@ void SceneManager::Init(void)
 	Init3D();
 
 	// èâä˙ÉVÅ[ÉìÇÃê›íË
-	DoChangeScene(SCENE_ID::TITLE_LOGO);
+	DoChangeScene(SCENE_ID::TITLE_IMAGE);
 
 }
 
@@ -220,7 +220,7 @@ void SceneManager::DoChangeScene(SCENE_ID sceneId)
 
 	switch (sceneId_)
 	{
-	case SCENE_ID::TITLE_LOGO:
+	case SCENE_ID::TITLE_IMAGE:
 		scene_ = std::make_unique<TitleScene>();
 		break;
 	case SCENE_ID::GAME:

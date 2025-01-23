@@ -2,6 +2,7 @@
 #include "../Manager/SceneManager.h"
 #include "../Object/Common/Collider/ColliderManager.h"
 #include "../Object/Common/AnimationController.h"
+#include "../Object/Common/Collider/ColliderController.h"
 #include "EnemyBase.h"
 
 EnemyBase::EnemyBase(void)

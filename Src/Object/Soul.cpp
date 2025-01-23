@@ -18,12 +18,11 @@ const float SOUL_ROT_SPEED = 10.0f;
 const float DEVIDE_STEPCOUNT = 0.5f;
 const float EFFECT_PLAYSPEED = 0.001f;
 
-Soul::Soul(std::weak_ptr<Player> player)
+Soul::Soul(std::weak_ptr<Player> player,VECTOR enemyPos)
 {
 	player_ = player;
 
-	// 敵の座標情報をとるため生成
-	normalEnemy_ = std::make_shared<TestEnemy>(player_);
+	followSoulPos_[SOUL_TYPE::BLUE] = enemyPos;
 
 	// 浮遊速度などの初期化
 	soulMoveCnt_ = 0.0f;
@@ -31,31 +30,20 @@ Soul::Soul(std::weak_ptr<Player> player)
 	effectRot_ = 0.0f;
 	moveSpeed_ = SOUL_MOVE_SPEED;
 
-	// エフェクト初期化
-	effectSoulResId_[SOUL_TYPE::BLUE] = (ResourceManager::GetInstance().Load(ResourceManager::SRC::EFFECT_BLUESOUL).handleId_);
-	SetSpeedPlayingEffekseer3DEffect(effectSoulResId_[SOUL_TYPE::BLUE], EFFECT_PLAYSPEED);
-}
-
-Soul::~Soul(void)
-{
-	StopEffect();
-	DeleteEffekseerEffect(effectSoulResId_[SOUL_TYPE::BLUE]);
-}
-
-void Soul::Init(void)
-{	
 	// プレイヤーの座標を取得
 	playerPos_ = player_.lock()->GetLeftHandPos();
 
-	// それぞれの位置を取得
-	followSoulPos_[SOUL_TYPE::BLUE] = normalEnemy_->GetPos();
-}
+	// エフェクト初期化
+	effectSoulResId_[SOUL_TYPE::BLUE] = (ResourceManager::GetInstance().Load(ResourceManager::SRC::EFFECT_BLUESOUL).handleId_);
 
-void Soul::Update(void)
-{
-	playerPos_ = player_.lock()->GetLeftHandPos();
-	SetScalePlayingEffekseer3DEffect(effectSoulPlayId_[SOUL_TYPE::BLUE], SOUL_SCALE.x, SOUL_SCALE.y, SOUL_SCALE.z);	
-	
+	// 再生
+	effectSoulPlayId_[SOUL_TYPE::BLUE] = PlayEffekseer3DEffect(effectSoulResId_[SOUL_TYPE::BLUE]);
+	SetSpeedPlayingEffekseer3DEffect(effectSoulPlayId_[SOUL_TYPE::BLUE], EFFECT_PLAYSPEED);
+	SetScalePlayingEffekseer3DEffect(effectSoulPlayId_[SOUL_TYPE::BLUE], SOUL_SCALE.x, SOUL_SCALE.y, SOUL_SCALE.z);
+	/*SetPosPlayingEffekseer3DEffect(effectSoulPlayId_[SOUL_TYPE::BLUE],
+		followSoulPos_[SOUL_TYPE::BLUE].x, followSoulPos_[SOUL_TYPE::BLUE].y, followSoulPos_[SOUL_TYPE::BLUE].z);*/
+
+
 	if (player_.lock()->GetNowAnim() == Player::ANIM_TYPE::INHALE)
 	{
 		UpdateInhale();
@@ -66,17 +54,43 @@ void Soul::Update(void)
 	}
 
 }
+
+Soul::~Soul(void)
+{
+	StopEffect();
+	DeleteEffekseerEffect(effectSoulResId_[SOUL_TYPE::BLUE]);
+}
+
+void Soul::Init(void)
+{	
+	
+}
+
+void Soul::Update(void)
+{
+	// それぞれの位置を取得
+	//followSoulPos_[SOUL_TYPE::BLUE] = normalEnemy_->GetPos();
+	/*DrawFormatString(0, 20, GetColor(255, 255, 255), "soulPosition: (%0.2f,%0.2f,%0.2f)",
+		followSoulPos_[SOUL_TYPE::BLUE].x, followSoulPos_[SOUL_TYPE::BLUE].y, followSoulPos_[SOUL_TYPE::BLUE].z);*/
+	playerPos_ = player_.lock()->GetLeftHandPos();
+	
+}
 int cnt = 0;
 void Soul::Draw(void)
 {
 
-	DrawFormatString(0, 20, GetColor(255, 255, 255), "soulPosition: (%0.2f,%0.2f,%0.2f)",
-		followSoulPos_[SOUL_TYPE::BLUE].x, followSoulPos_[SOUL_TYPE::BLUE].y, followSoulPos_[SOUL_TYPE::BLUE].z);
+	/*DrawFormatString(0, 20, GetColor(255, 255, 255), "soulPosition: (%0.2f,%0.2f,%0.2f)",
+		followSoulPos_[SOUL_TYPE::BLUE].x, followSoulPos_[SOUL_TYPE::BLUE].y, followSoulPos_[SOUL_TYPE::BLUE].z);*/
 		cnt++;
 	if (cnt <= 1)
 	{
-		effectSoulPlayId_[SOUL_TYPE::BLUE] = PlayEffekseer3DEffect(effectSoulResId_[SOUL_TYPE::BLUE]);
+		
 	}
+}
+
+void Soul::AddEffect(VECTOR pos)
+{
+
 }
 
 void Soul::StopEffect(void)
@@ -128,6 +142,13 @@ void Soul::UpdateInhale(void)
 		followSoulPos_[SOUL_TYPE::BLUE].x,
 		followSoulPos_[SOUL_TYPE::BLUE].y,
 		followSoulPos_[SOUL_TYPE::BLUE].z);
+}
+
+void Soul::SetPos(VECTOR pos)
+{
+	followSoulPos_[SOUL_TYPE::BLUE] = pos;
+	//enemyTransform_.Update();
+
 }
 
 void Soul::UpdateFloating(void)

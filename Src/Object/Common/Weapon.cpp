@@ -34,7 +34,7 @@ Weapon::Weapon(void)
 	handAttatchFrame_{ 35 },
 	backattatchfram_{ 4 },
 	collisionSize_{ 30 },
-	isEffect_{ static_cast<int>(EFFECT::NONE) },
+	nowEffect_{ static_cast<int>(EFFECT::NONE) },
 	lineAlpha_{ ALPHA_MAX },
 	colortimeCnt_{ 0 }
 {
@@ -64,7 +64,39 @@ Weapon::~Weapon(void)
 
 void Weapon::Init(void)
 {
-	weaponTransform_.Update();
+
+	SwordLength_ = { 0.0f,180.0f,0.0f };
+
+	StopEffekseer3DEffect(effectLightPlayId_);
+	StopEffekseer3DEffect(effectLinePlayId_);
+	StopEffekseer3DEffect(effectSlashPlayId_);
+
+	InitEffect();
+
+	OldCol_ = false;
+
+	isFire_ = false;
+
+	isDrawed_ = false;
+
+	isHit_ = false;
+
+	isCharge_ = false;
+	isChargeOld_ = false;
+
+	nowEffect_ = (int)EFFECT::NONE;
+
+	//SetEffect(NowEffect_);
+	SetEffectAfterFade();
+	lineAlpha_ = 255;
+	fading_ = false;
+
+	//SoundIDFire_ = ResM::GetInstance().GetSoundResourcesInstance().Load(SoundRes::SRC::PLAYER_USEFIRE).GetHandleId();
+	//SoundIDLightning_ = ResM::GetInstance().GetSoundResourcesInstance().Load(SoundRes::SRC::PLAYER_USELIGHTNING).GetHandleId();
+	//SoundIDStorm_ = ResM::GetInstance().GetSoundResourcesInstance().Load(SoundRes::SRC::PLAYER_USESTORM).GetHandleId();
+
+	isRainbow_ = false;
+	colortimeCnt_ = 0;
 }
 
 void Weapon::Update(void)
@@ -130,8 +162,8 @@ void Weapon::WeaponUpdate(Transform follow, bool isAtkcol, bool isDrawed)
 void Weapon::Draw(void)
 {
 	MV1DrawModel(weaponTransform_.modelId);
-	DrawFormatString(0, 60, GetColor(255, 255, 255),
-		"weaponPosition: (%0.2f,%0.2f,%0.2f)", weaponTransform_.pos.x, weaponTransform_.pos.y, weaponTransform_.pos.z);// 頂点：カメラ座標
+//	DrawFormatString(0, 60, GetColor(255, 255, 255),
+//		"weaponPosition: (%0.2f,%0.2f,%0.2f)", weaponTransform_.pos.x, weaponTransform_.pos.y, weaponTransform_.pos.z);// 頂点：カメラ座標
 }
 
 void Weapon::DrawDebug(void)
@@ -140,7 +172,7 @@ void Weapon::DrawDebug(void)
 
 const int Weapon::GetIsEffect(void) const
 {
-	return isEffect_;
+	return nowEffect_;
 }
 
 const VECTOR Weapon::GetTopPos(void) const
@@ -159,7 +191,7 @@ void Weapon::SetEffect(int effect)
 	fading_ = true;
 	
 	//エフェクト種類設定
-	isEffect_ = effect;
+	nowEffect_ = effect;
 }
 
 void Weapon::Fade(void)
@@ -179,18 +211,103 @@ void Weapon::Fade(void)
 
 void Weapon::SetIsHit(bool ishit)
 {
+
+	isHit_ = ishit;
+
 }
 
 void Weapon::InitEffect(void)
 {
+	effectNormalLineResId_ = resMng_.Load(ResourceManager::SRC::PLAYER_WEAPON_SWORDLINE).handleId_;
+
 }
 
 void Weapon::SyncEffect(void)
 {
+	weaponTransform_.Update();
+
+	OldCol_ = isHit_;
+
+	VECTOR FPos = weaponTransform_.pos;
+	Quaternion FRot = weaponTransform_.quaRot;
+
+#pragma region ローカル回転
+	Quaternion rotL = Quaternion::Identity();
+
+	if (isDrawed_)
+	{
+		rotL = rotL.Mult(handLocalquarot_);
+	}
+	else
+	{
+		rotL = rotL.Mult(backLocalquarot_);
+	}
+	FRot = FRot.Mult(rotL);
+#pragma endregion
+
+	VECTOR angles = Quaternion::ToEuler(FRot);
+
+	VECTOR localposL = { 0.0f,30.0f,0.0f };
+
+	localposL = Quaternion::PosAxis(FRot, localposL);
+
+	VECTOR posL = VAdd(FPos, localposL);
+
+	SetPosPlayingEffekseer3DEffect(effectSlashPlayId_, posL.x, posL.y, posL.z);
+	SetRotationPlayingEffekseer3DEffect(effectSlashPlayId_, angles.x, angles.y, angles.z);
+	SetScalePlayingEffekseer3DEffect(effectSlashPlayId_, effectScale_, effectScale_ * 4.0f, effectScale_);
+	SetSpeedPlayingEffekseer3DEffect(effectSlashPlayId_, 3.0f);
+
+	SetPosPlayingEffekseer3DEffect(effectLightPlayId_, posL.x, posL.y, posL.z);
+	SetRotationPlayingEffekseer3DEffect(effectLightPlayId_, angles.x, angles.y, angles.z);
+	SetScalePlayingEffekseer3DEffect(effectLightPlayId_, effectScale_, effectScale_, effectScale_);
+	SetSpeedPlayingEffekseer3DEffect(effectLightPlayId_, 2.0f);
+
+	int time = colortimeCnt_ * 20;
+	int r = static_cast<int>((sin(time * 0.01) + 1) * 127.5); // 0～255の範囲に収める
+	int g = static_cast<int>((sin(time * 0.01 + DX_PI / 2) + 1) * 127.5);
+	int b = static_cast<int>((sin(time * 0.01 + DX_PI) + 1) * 127.5);
+	int color = GetColor(r, g, b);
+
+	if (isRainbow_)
+	{
+		SetColorPlayingEffekseer3DEffect(effectLinePlayId_, r, g, b, 255);
+	}
+	else
+	{
+		SetColorPlayingEffekseer3DEffect(effectLinePlayId_, lineAlpha_, lineAlpha_, lineAlpha_, 255);
+	}
+	SetPosPlayingEffekseer3DEffect(effectLinePlayId_, posL.x, posL.y, posL.z);
+	SetRotationPlayingEffekseer3DEffect(effectLinePlayId_, angles.x, angles.y, angles.z);
+	float scl = 20.0f;
+	SetScalePlayingEffekseer3DEffect(effectLinePlayId_, scl, scl, scl);
 }
 
 void Weapon::PlayEffect(void)
 {
+	if (OldCol_ == false && isHit_)
+	{
+		effectSlashPlayId_ = PlayEffekseer3DEffect(effectSlashResId_);
+	}
+	else if (!isHit_)
+	{
+		StopEffekseer3DEffect(effectSlashPlayId_);
+		effectSlashPlayId_ = -1;
+	}
+
+	if (nowEffect_ == (int)EFFECT::NONE && !fading_)
+	{
+		if (isAtkOld_ == false && isAtk_)
+		{
+			effectLinePlayId_ = PlayEffekseer3DEffect(effectNormalLineResId_);
+		}
+		else if (!isAtk_)
+		{
+			StopEffekseer3DEffect(effectLinePlayId_);
+			effectLinePlayId_ = -1;
+		}
+	}
+
 }
 
 void Weapon::SetEffectAfterFade(void)

@@ -25,19 +25,29 @@ public:
 	void Update(void) override;
 	void Draw(void) override;
 
+	// 振動
+	void Vibration(void);
+
 private:
 
 	// 衝突判定
-	bool CheckAttackCollisions(const VECTOR& p1, float r1, const VECTOR& p2, float r2);
+	void SetPlayerAttackCollision(void);
 	void SetCollision(void);
 
+	// 敵の生成
 	void MakeEnemies(void);
+	
+	// 魂の生成
+	void MakeSouls(void);
 
+	void DrawHp(float hp, float maxHp, int x, int y, int width, int height);
+
+	
 	// ステージ
 	std::unique_ptr<Stage> stage_;
 	
 	// 魂
-	std::shared_ptr<Soul> soul_;
+	std::vector<std::shared_ptr<Soul>> soul_;
 
 	// 敵オブジェクト
 	std::vector<std::shared_ptr<TestEnemy>> testEnemy_;
@@ -53,4 +63,6 @@ private:
 
 	// プレイヤー
 	std::shared_ptr<Player> player_;
+	
+	float soulAliveCnt_;
 };

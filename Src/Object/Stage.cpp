@@ -52,6 +52,9 @@ void Stage::Init(void)
 		Quaternion::Euler({ 0.0f, Utility::Deg2RadF(0.0f), 0.0f });
 	
 	colliderTransform_.Update();
+
+
+	SetCollisionStage();
 }
 
 void Stage::Update(void)
@@ -60,24 +63,16 @@ void Stage::Update(void)
 	stageTransform_.Update();
 	colliderTransform_.Update();
 
-	// ステージモデルに対するコライダの設定
-	scnMng_.GetColManager().AddCollider(
-		OBJECT_TYPE::STAGE,
-		COL_TYPE::MODEL,
-		stageTransform_,
-		true
-	);
-
 }
 
 void Stage::Draw(void)
 {
 	MV1DrawModel(stageTransform_.modelId);
 	//MV1DrawModel(colliderTransform_.modelId);
-	scnMng_.GetColManager().DrawCollider(OBJECT_TYPE::PLAYER);
-	//scnMng_.GetColManager().DrawCollider(OBJECT_TYPE::ENEMY_MODEL);
+	/*scnMng_.GetColManager().DrawCollider(OBJECT_TYPE::PLAYER);
+	scnMng_.GetColManager().DrawCollider(OBJECT_TYPE::ENEMY_MODEL);
 	scnMng_.GetColManager().DrawCollider(OBJECT_TYPE::WEAPON);
-	scnMng_.GetColManager().DrawCollider(OBJECT_TYPE::PLAYER_FOOT);
+	scnMng_.GetColManager().DrawCollider(OBJECT_TYPE::PLAYER_FOOT);*/
 }
 
 int Stage::GetModelId(void)
@@ -87,5 +82,12 @@ int Stage::GetModelId(void)
 
 void Stage::SetCollisionStage(void)
 {
+	// ステージモデルに対するコライダの設定
+	scnMng_.GetColManager().AddCollider(
+		OBJECT_TYPE::STAGE,
+		COL_TYPE::MODEL,
+		stageTransform_,
+		true
+	);
 
 }

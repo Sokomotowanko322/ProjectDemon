@@ -116,7 +116,7 @@ protected:
 	bool isAtk_;
 	bool isAtkOld_;
 
-	int isEffect_;
+	int nowEffect_;
 
 	int lineAlpha_;
 

@@ -28,7 +28,13 @@ void ResourceManager::Init(void)
 
 	// タイトル画像
 	res = std::make_unique<Resource>(Resource::TYPE::IMG, Application::PATH_IMAGE + "TitleImage.png");
-	resourcesMap_.emplace(SRC::TITLE_LOGO, std::move(res));
+	resourcesMap_.emplace(SRC::TITLE_IMAGE, std::move(res));
+	res = std::make_unique<Resource>(Resource::TYPE::IMG, Application::PATH_IMAGE + "Start.png");
+	resourcesMap_.emplace(SRC::START_LOGO, std::move(res));
+	
+	// リザルト画像
+	res = std::make_unique<Resource>(Resource::TYPE::IMG, Application::PATH_IMAGE + "ResultImage.png");
+	resourcesMap_.emplace(SRC::RESULT, std::move(res));
 
 	// PushSpace
 	res = std::make_unique<Resource>(Resource::TYPE::IMG, Application::PATH_IMAGE + "PushSpace.png");
@@ -88,6 +94,8 @@ void ResourceManager::Init(void)
 	resourcesMap_.emplace(SRC::PLAYER_SECONDCOMBO, std::move(res));
 	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Player/ComboThird.mv1");
 	resourcesMap_.emplace(SRC::PLAYER_THIRDCOMBO, std::move(res));
+	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Player/Counter.mv1");
+	resourcesMap_.emplace(SRC::PLAYER_COUNTER, std::move(res));
 
 	// 吸収動作
 	res = std::make_unique<Resource>(Resource::TYPE::MODEL, Application::PATH_MODEL + "Player/Inhale.mv1");
@@ -127,6 +135,10 @@ void ResourceManager::Init(void)
 	// ヒット時エフェクト
 	res = std::make_unique<Resource>(Resource::TYPE::EFFEKSEER, Application::PATH_EFFECT + "Slash_Hit.efkefc");
 	resourcesMap_.emplace(SRC::EFFECT_HIT, std::move(res));
+	
+	// 剣に追従するエフェクト
+	res = std::make_unique<Resource>(Resource::TYPE::EFFEKSEER, Application::PATH_EFFECT + "SwordLine.efkproj");
+	resourcesMap_.emplace(SRC::PLAYER_WEAPON_SWORDLINE, std::move(res));
 
 #pragma endregion
 

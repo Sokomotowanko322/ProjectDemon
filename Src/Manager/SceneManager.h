@@ -22,7 +22,7 @@ public:
 	enum class SCENE_ID
 	{
 		NONE,
-		TITLE_LOGO,
+		TITLE_IMAGE,
 		GAME,
 		RESULT
 	};

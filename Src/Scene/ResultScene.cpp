@@ -6,8 +6,6 @@
 #include "../Manager/ResourceManager.h"
 #include "../Manager/InputManager.h"
 #include "../Manager/Camera.h"
-#include "../Object/Common/AnimationController.h"
-#include "../Object/SkyDome.h"
 #include "TitleScene.h"
 #include "ResultScene.h"
 
@@ -23,6 +21,7 @@ void ResultScene::Init(void)
 {
 	// íËì_ÉJÉÅÉâ
 	mainCamera.ChangeMode(Camera::MODE::FIXED_POINT);
+	resultImg_ = resMng_.Load(ResourceManager::SRC::RESULT).handleId_;
 }
 
 void ResultScene::Update(void)
@@ -30,10 +29,11 @@ void ResultScene::Update(void)
 	InputManager& ins = InputManager::GetInstance();
 	if (ins.IsTriggered(InputManager::ACTION::SCENE_CHANGE))
 	{
-		SceneManager::GetInstance().ChangeScene(SceneManager::SCENE_ID::TITLE_LOGO);
+		SceneManager::GetInstance().ChangeScene(SceneManager::SCENE_ID::TITLE_IMAGE);
 	}
 }
 
 void ResultScene::Draw(void)
 {
+	DrawGraph(0, 0, resultImg_, true);
 }
